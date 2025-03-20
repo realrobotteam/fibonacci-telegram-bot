@@ -9,6 +9,7 @@ import fcntl
 from telebot.async_telebot import AsyncTeleBot
 import handlers
 from config import conf, generation_config, safety_settings
+import gemini
 
 # Init args
 parser = argparse.ArgumentParser()
@@ -65,7 +66,9 @@ async def main():
                 telebot.types.BotCommand("draw", "draw picture"),
                 telebot.types.BotCommand("edit", "edit photo"),
                 telebot.types.BotCommand("clear", "Clear all history"),
-                telebot.types.BotCommand("switch","switch default model")
+                telebot.types.BotCommand("switch", "switch default model"),
+                telebot.types.BotCommand("personality", "تنظیم شخصیت ربات"),
+                telebot.types.BotCommand("reset_personality", "بازنشانی شخصیت به حالت پیش‌فرض")
             ],
         )
         print("✅ مقداردهی اولیه ربات انجام شد.")
@@ -84,6 +87,10 @@ async def main():
             func=lambda message: message.chat.type == "private",
             content_types=['text'],
             pass_bot=True)
+            
+        # اضافه کردن دستورات مدیریت شخصیت
+        bot.register_message_handler(gemini.set_personality,                 commands=['personality'],    pass_bot=True)
+        bot.register_message_handler(gemini.reset_personality,               commands=['reset_personality'], pass_bot=True)
 
         # Start bot
         print("✅ شروع گوش دادن به پیام‌های جدید...")
