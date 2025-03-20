@@ -13,21 +13,59 @@ gemini_draw_dict = {}
 gemini_chat_dict = {}
 gemini_pro_chat_dict = {}
 default_model_dict = {}
+personality_dict = {}  # دیکشنری برای ذخیره شخصیت‌های سفارشی کاربران
 
 model_1                 =       conf["model_1"]
 model_2                 =       conf["model_2"]
 error_info              =       conf["error_info"]
 before_generate_info    =       conf["before_generate_info"]
 download_pic_notify     =       conf["download_pic_notify"]
+default_personality     =       conf["bot_personality"]
 
 search_tool = {'google_search': {}}
 
 client = genai.Client(api_key=sys.argv[2])
 
+def get_user_personality(user_id: str) -> str:
+    """دریافت شخصیت تنظیم شده برای کاربر"""
+    return personality_dict.get(str(user_id), default_personality)
+
+async def set_personality(message: Message, bot: TeleBot) -> None:
+    """تنظیم شخصیت جدید برای ربات"""
+    try:
+        # دریافت متن شخصیت از پیام
+        personality_text = message.text.strip().split(maxsplit=1)[1].strip()
+        
+        # ذخیره شخصیت جدید
+        personality_dict[str(message.from_user.id)] = personality_text
+        
+        await bot.reply_to(
+            message,
+            "✅ شخصیت جدید ربات با موفقیت تنظیم شد!\n\n🤖 از این پس با این شخصیت به پیام‌های شما پاسخ خواهم داد.",
+            parse_mode="HTML"
+        )
+    except IndexError:
+        # اگر متن شخصیت ارائه نشده باشد
+        await bot.reply_to(
+            message,
+            conf["personality_help"],
+            parse_mode="HTML"
+        )
+
+async def reset_personality(message: Message, bot: TeleBot) -> None:
+    """بازنشانی شخصیت ربات به حالت پیش‌فرض"""
+    if str(message.from_user.id) in personality_dict:
+        del personality_dict[str(message.from_user.id)]
+    await bot.reply_to(
+        message,
+        "✅ شخصیت ربات به حالت پیش‌فرض بازنشانی شد.",
+        parse_mode="HTML"
+    )
+
 async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str):
     sent_message = None
     try:
-        sent_message = await bot.reply_to(message, "🤖 Generating answers...")
+        sent_message = await bot.reply_to(message, "🤖 در حال پردازش...")
 
         chat = None
         if model_type == model_1:
@@ -41,67 +79,51 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str):
         else:
             chat = chat_dict[str(message.from_user.id)]
 
-        response = await chat.send_message_stream(m)
+        # اضافه کردن شخصیت به پیام
+        personality = get_user_personality(str(message.from_user.id))
+        prompt = f"{personality}\n\nکاربر پرسیده است: {m}"
+
+        response = await chat.send_message_stream(prompt)
 
         full_response = ""
         last_update = time.time()
         update_interval = conf["streaming_update_interval"]
 
         async for chunk in response:
-            if hasattr(chunk, 'text') and chunk.text:
-                full_response += chunk.text
-                current_time = time.time()
+            full_response += chunk.text
+            
+            # به‌روزرسانی پیام هر 0.5 ثانیه
+            if time.time() - last_update >= update_interval:
+                try:
+                    await bot.edit_message_text(
+                        escape(full_response),
+                        sent_message.chat.id,
+                        sent_message.message_id,
+                        parse_mode="MarkdownV2"
+                    )
+                    last_update = time.time()
+                except Exception as e:
+                    print(f"Error updating message: {e}")
 
-                if current_time - last_update >= update_interval:
-
-                    try:
-                        await bot.edit_message_text(
-                            escape(full_response),
-                            chat_id=sent_message.chat.id,
-                            message_id=sent_message.message_id,
-                            parse_mode="MarkdownV2"
-                            )
-                    except Exception as e:
-                        if "parse markdown" in str(e).lower():
-                            await bot.edit_message_text(
-                                full_response,
-                                chat_id=sent_message.chat.id,
-                                message_id=sent_message.message_id
-                                )
-                        else:
-                            if "message is not modified" not in str(e).lower():
-                                print(f"Error updating message: {e}")
-                    last_update = current_time
-
+        # به‌روزرسانی نهایی پیام
         try:
             await bot.edit_message_text(
                 escape(full_response),
-                chat_id=sent_message.chat.id,
-                message_id=sent_message.message_id,
+                sent_message.chat.id,
+                sent_message.message_id,
                 parse_mode="MarkdownV2"
             )
         except Exception as e:
-            try:
-                if "parse markdown" in str(e).lower():
-                    await bot.edit_message_text(
-                        full_response,
-                        chat_id=sent_message.chat.id,
-                        message_id=sent_message.message_id
-                    )
-            except Exception:
-                traceback.print_exc()
-
+            print(f"Error in final message update: {e}")
 
     except Exception as e:
-        traceback.print_exc()
+        print(traceback.format_exc())
         if sent_message:
             await bot.edit_message_text(
-                f"{error_info}\nError details: {str(e)}",
-                chat_id=sent_message.chat.id,
-                message_id=sent_message.message_id
+                error_info,
+                sent_message.chat.id,
+                sent_message.message_id
             )
-        else:
-            await bot.reply_to(message, f"{error_info}\nError details: {str(e)}")
 
 async def gemini_edit(bot: TeleBot, message: Message, m: str, photo_file: bytes):
 
