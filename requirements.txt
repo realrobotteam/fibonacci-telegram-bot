@@ -1,0 +1,5 @@
+pyTelegramBotAPI
+google-genai
+aiohttp
+md2tgmd
+Pillow
