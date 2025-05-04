@@ -54,35 +54,54 @@ async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot
     هندلر رویداد عضویت در کانال
     """
     if chat_member.chat.id == CHANNEL_ID and chat_member.new_chat_member.status in ['member', 'administrator', 'creator']:
-        welcome_text = f"""
-🎉 به خانواده ما خوش آمدید {chat_member.new_chat_member.user.first_name} عزیز!
+        welcome_text = escape(f"""
+👋 سلام {chat_member.new_chat_member.user.first_name} عزیز!
 
-✅ حالا می‌تونید از تمام قابلیت‌های ربات استفاده کنید.
+🤖 به ربات هوش مصنوعی فیبوناچی خوش آمدید!
 
-📝 برای شروع می‌تونید:
+📝 شما می‌تونید:
 • سوالات خود رو بپرسید
-• از دستور /gemini استفاده کنید
-• از دستور /draw برای طراحی استفاده کنید
-• و خیلی امکانات دیگه...
+• از دستور /gemini برای استفاده از مدل پیشرفته استفاده کنید
+• از دستور /draw برای طراحی تصاویر استفاده کنید
+• از دستور /edit برای ویرایش عکس‌ها استفاده کنید
 
-💡 برای دیدن راهنمای کامل، روی دکمه زیر کلیک کنید و دستور /start رو ارسال کنید.
-"""
+💡 مثال‌ها:
+• `/gemini هوش مصنوعی چیست؟`
+• `/draw یک گربه بامزه بکش`
+• `عکس من رو به سبک انیمه تغییر بده`
+
+🔄 برای پاک کردن تاریخچه چت از دستور /clear استفاده کنید
+🔄 برای تغییر مدل پیش‌فرض از دستور /switch استفاده کنید
+
+❓ اگر سوالی دارید، در کانال ما بپرسید: @fibonacciai
+
+💝 اگر از ربات راضی هستید، می‌تونید از ما حمایت کنید
+""")
         try:
-            # ارسال پیام در کانال
+            # ارسال پیام خصوصی به کاربر
             await bot.send_message(
-                CHANNEL_ID,
+                chat_member.new_chat_member.user.id,
                 welcome_text,
-                reply_markup=get_welcome_markup(),
-                parse_mode="MarkdownV2"
+                parse_mode="MarkdownV2",
+                reply_markup=get_support_markup()
             )
         except Exception as e:
             print(f"Error sending welcome message: {e}")
+            # اگر نتوانست پیام خصوصی بفرستد، در کانال ارسال می‌کند
+            try:
+                await bot.send_message(
+                    CHANNEL_ID,
+                    f"🎉 به {chat_member.new_chat_member.user.first_name} عزیز خوش آمدید!\nبرای استفاده از ربات، به @fibonacciaibot مراجعه کنید.",
+                    reply_markup=get_welcome_markup()
+                )
+            except Exception as e2:
+                print(f"Error sending channel message: {e2}")
 
 async def start(message: Message, bot: TeleBot) -> None:
     try:
         if not await check_user_membership(message, bot):
             return
-        welcome_text = f"""
+        welcome_text = escape(f"""
 👋 سلام {message.from_user.first_name} عزیز!
 
 🤖 به ربات هوش مصنوعی فیبوناچی خوش آمدید!
@@ -104,7 +123,7 @@ async def start(message: Message, bot: TeleBot) -> None:
 ❓ اگر سوالی دارید، در کانال ما بپرسید: @fibonacciai
 
 💝 اگر از ربات راضی هستید، می‌تونید از ما حمایت کنید
-"""
+""")
         await bot.reply_to(message, welcome_text, parse_mode="MarkdownV2", reply_markup=get_support_markup())
     except IndexError:
         await bot.reply_to(message, error_info)

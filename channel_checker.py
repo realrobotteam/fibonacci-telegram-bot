@@ -22,12 +22,4 @@ def get_join_channel_markup() -> types.InlineKeyboardMarkup:
     """
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}"))
-    return markup
-
-def get_support_markup() -> types.InlineKeyboardMarkup:
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("💎 حمایت مالی", url="https://zarinp.al/707658"),
-        types.InlineKeyboardButton("📢 کانال ما", url="https://t.me/fibonacciai")
-    )
     return markup 
