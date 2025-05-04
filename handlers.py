@@ -86,7 +86,7 @@ async def check_user_membership(message: Message, bot: TeleBot) -> bool:
     if not await check_membership(bot, message.from_user.id):
         await bot.reply_to(
             message,
-            "⚠️ برای استفاده از ربات، ابتدا باید در کانال ما عضو شوید: /Start",
+            "⚠️ برای استفاده از ربات، ابتدا باید در کانال ما عضو شوید:",
             reply_markup=get_join_channel_markup()
         )
         return False
@@ -238,14 +238,17 @@ async def gemini_private_handler(message: Message, bot: TeleBot) -> None:
     if not await check_user_membership(message, bot):
         return
     m = message.text.strip()
+    if m.lower() in ["تو توسط چه کسی طراحی شدی", "who created you", "who made you"]:
+        await bot.reply_to(message, "من توسط تیم رئال ربات و پلتفرم هوش مصنوعی فیبوناچی ساخته شدم.")
+        return
     if str(message.from_user.id) not in default_model_dict:
         default_model_dict[str(message.from_user.id)] = True
-        await gemini.gemini_stream(bot,message,m,model_1)
+        await gemini.gemini_stream(bot, message, m, model_1)
     else:
         if default_model_dict[str(message.from_user.id)]:
-            await gemini.gemini_stream(bot,message,m,model_1)
+            await gemini.gemini_stream(bot, message, m, model_1)
         else:
-            await gemini.gemini_stream(bot,message,m,model_2)
+            await gemini.gemini_stream(bot, message, m, model_2)
 
 async def gemini_photo_handler(message: Message, bot: TeleBot) -> None:
     if not await check_rate_limit(message, bot):
