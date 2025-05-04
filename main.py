@@ -8,7 +8,7 @@ from telebot.asyncio_handler_backends import State, StatesGroup
 from telebot.asyncio_storage import StateMemoryStorage
 from config import conf, generation_config, safety_settings
 from handlers import (
-    start, help_command, gemini_private_handler, gemini_group_handler,
+    start, gemini_private_handler, gemini_group_handler,
     gemini_private_handler_photo, gemini_group_handler_photo,
     gemini_private_handler_document, gemini_group_handler_document,
     gemini_private_handler_voice, gemini_group_handler_voice,
@@ -74,7 +74,6 @@ async def main():
 
     # Init commands
     bot.register_message_handler(start,                         commands=['start'],         pass_bot=True)
-    bot.register_message_handler(help_command,                    commands=['help'],          pass_bot=True)
     bot.register_message_handler(admin_command,                    commands=['admin'],         pass_bot=True)
     bot.register_message_handler(gemini_stream_handler,         commands=['gemini'],        pass_bot=True)
     bot.register_message_handler(gemini_pro_stream_handler,     commands=['gemini_pro'],    pass_bot=True)
@@ -104,7 +103,6 @@ def register_handlers(bot: AsyncTeleBot):
     """ثبت هندلرهای ربات"""
     # دستورات اصلی
     bot.register_message_handler(start, commands=['start'], pass_bot=True)
-    bot.register_message_handler(help_command, commands=['help'], pass_bot=True)
     bot.register_message_handler(admin_command, commands=['admin'], pass_bot=True)
     
     # هندلرهای پیام‌های خصوصی
