@@ -2,8 +2,8 @@ from telebot.async_telebot import AsyncTeleBot
 from telebot import types
 
 # تنظیمات کانال
-CHANNEL_USERNAME = "@your_channel_username"  # نام کاربری کانال خود را اینجا قرار دهید
-CHANNEL_ID = -1001234567890  # شناسه عددی کانال خود را اینجا قرار دهید
+CHANNEL_USERNAME = "@fibonacciai"  # نام کاربری کانال خود را اینجا قرار دهید
+CHANNEL_ID = -1002081035666  # شناسه عددی کانال خود را اینجا قرار دهید
 
 async def check_membership(bot: AsyncTeleBot, user_id: int) -> bool:
     """
