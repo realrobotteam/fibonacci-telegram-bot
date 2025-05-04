@@ -18,9 +18,8 @@ async def check_membership(bot: AsyncTeleBot, user_id: int) -> bool:
 
 def get_join_channel_markup() -> types.InlineKeyboardMarkup:
     """
-    ایجاد دکمه عضویت در کانال و دکمه شروع چت
+    ایجاد دکمه عضویت در کانال
     """
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}"))
-    markup.add(types.InlineKeyboardButton("🚀 شروع چت", "/start"))
     return markup 
