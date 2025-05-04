@@ -140,8 +140,37 @@ async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot
             except Exception as e2:
                 print(f"Error sending channel message: {e2}")
 
+def is_creator_question(text: str) -> bool:
+    text = text.lower().strip()
+    keywords = [
+        "چه کسی تو را ساخته",
+        "سازنده تو کیست",
+        "توسط چه کسی طراحی شدی",
+        "سازنده تو کیه",
+        "who created you",
+        "who made you",
+        "who is your creator",
+        "who developed you",
+        "who built you",
+        "who designed you",
+        "who programmed you",
+        "who is your developer",
+        "سازنده ات کیست",
+        "سازنده تو کیست",
+        "سازنده تو کیه",
+        "سازنده ات کیه",
+        "سازنده تو"
+    ]
+    for k in keywords:
+        if k in text:
+            return True
+    return False
+
 async def start(message: Message, bot: TeleBot) -> None:
     if not await check_rate_limit(message, bot):
+        return
+    if is_creator_question(message.text):
+        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
         return
     try:
         if not await check_user_membership(message, bot):
@@ -177,6 +206,9 @@ async def start(message: Message, bot: TeleBot) -> None:
 async def gemini_stream_handler(message: Message, bot: TeleBot) -> None:
     if not await check_rate_limit(message, bot):
         return
+    if is_creator_question(message.text):
+        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
+        return
     if not await check_user_membership(message, bot):
         return
     try:
@@ -188,6 +220,9 @@ async def gemini_stream_handler(message: Message, bot: TeleBot) -> None:
 
 async def gemini_pro_stream_handler(message: Message, bot: TeleBot) -> None:
     if not await check_rate_limit(message, bot):
+        return
+    if is_creator_question(message.text):
+        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
         return
     if not await check_user_membership(message, bot):
         return
@@ -238,7 +273,7 @@ async def gemini_private_handler(message: Message, bot: TeleBot) -> None:
     if not await check_user_membership(message, bot):
         return
     m = message.text.strip()
-    if m.lower() in ["تو توسط چه کسی طراحی شدی", "who created you", "who made you", "who are you", "what are you"]:
+    if is_creator_question(m):
         await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
         return
     if str(message.from_user.id) not in default_model_dict:
