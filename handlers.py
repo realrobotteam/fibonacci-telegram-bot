@@ -25,6 +25,17 @@ def get_welcome_markup() -> InlineKeyboardMarkup:
     markup.add(InlineKeyboardButton("🚀 شروع استفاده از ربات", url="https://t.me/fibonacciaibot"))
     return markup
 
+def get_support_markup() -> InlineKeyboardMarkup:
+    """
+    ایجاد دکمه‌های حمایت مالی
+    """
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("💎 حمایت مالی", url="https://zarinp.al/707658"),
+        InlineKeyboardButton("📢 کانال ما", url="https://t.me/fibonacciai")
+    )
+    return markup
+
 async def check_user_membership(message: Message, bot: TeleBot) -> bool:
     """
     بررسی عضویت کاربر در کانال
@@ -71,7 +82,30 @@ async def start(message: Message, bot: TeleBot) -> None:
     try:
         if not await check_user_membership(message, bot):
             return
-        await bot.reply_to(message , escape("Welcome, you can ask me questions now. \nFor example: `Who is john lennon?`"), parse_mode="MarkdownV2")
+        welcome_text = f"""
+👋 سلام {message.from_user.first_name} عزیز!
+
+🤖 به ربات هوش مصنوعی فیبوناچی خوش آمدید!
+
+📝 شما می‌تونید:
+• سوالات خود رو بپرسید
+• از دستور /gemini برای استفاده از مدل پیشرفته استفاده کنید
+• از دستور /draw برای طراحی تصاویر استفاده کنید
+• از دستور /edit برای ویرایش عکس‌ها استفاده کنید
+
+💡 مثال‌ها:
+• `/gemini هوش مصنوعی چیست؟`
+• `/draw یک گربه بامزه بکش`
+• `عکس من رو به سبک انیمه تغییر بده`
+
+🔄 برای پاک کردن تاریخچه چت از دستور /clear استفاده کنید
+🔄 برای تغییر مدل پیش‌فرض از دستور /switch استفاده کنید
+
+❓ اگر سوالی دارید، در کانال ما بپرسید: @fibonacciai
+
+💝 اگر از ربات راضی هستید، می‌تونید از ما حمایت کنید
+"""
+        await bot.reply_to(message, welcome_text, parse_mode="MarkdownV2", reply_markup=get_support_markup())
     except IndexError:
         await bot.reply_to(message, error_info)
 
