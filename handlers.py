@@ -173,6 +173,8 @@ async def start(message: Message, bot: TeleBot) -> None:
         await bot.reply_to(message, error_info)
 
 async def gemini_stream_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
     if not await check_user_membership(message, bot):
         return
     try:
@@ -183,6 +185,8 @@ async def gemini_stream_handler(message: Message, bot: TeleBot) -> None:
     await gemini.gemini_stream(bot, message, m, model_1)
 
 async def gemini_pro_stream_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
     if not await check_user_membership(message, bot):
         return
     try:
@@ -193,6 +197,8 @@ async def gemini_pro_stream_handler(message: Message, bot: TeleBot) -> None:
     await gemini.gemini_stream(bot, message, m, model_2)
 
 async def clear(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
     if not await check_user_membership(message, bot):
         return
     # Check if the chat is already in gemini_chat_dict.
@@ -205,6 +211,8 @@ async def clear(message: Message, bot: TeleBot) -> None:
     await bot.reply_to(message, "Your history has been cleared")
 
 async def switch(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
     if not await check_user_membership(message, bot):
         return
     if message.chat.type != "private":
@@ -223,6 +231,8 @@ async def switch(message: Message, bot: TeleBot) -> None:
         await bot.reply_to( message , "Now you are using "+model_1)
 
 async def gemini_private_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
     if not await check_user_membership(message, bot):
         return
     m = message.text.strip()
@@ -236,6 +246,8 @@ async def gemini_private_handler(message: Message, bot: TeleBot) -> None:
             await gemini.gemini_stream(bot,message,m,model_2)
 
 async def gemini_photo_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
     if not await check_user_membership(message, bot):
         return
     if message.chat.type != "private":
@@ -264,6 +276,8 @@ async def gemini_photo_handler(message: Message, bot: TeleBot) -> None:
         await gemini.gemini_edit(bot, message, m, photo_file)
 
 async def gemini_edit_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
     if not await check_user_membership(message, bot):
         return
     if not message.photo:
@@ -281,6 +295,8 @@ async def gemini_edit_handler(message: Message, bot: TeleBot) -> None:
     await gemini.gemini_edit(bot, message, m, photo_file)
 
 async def draw_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
     if not await check_user_membership(message, bot):
         return
     try:
