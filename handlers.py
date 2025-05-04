@@ -71,7 +71,9 @@ async def check_rate_limit(message: Message, bot: TeleBot) -> bool:
     # فقط پیام‌های ۶۰ ثانیه اخیر را نگه می‌داریم
     times = [t for t in times if now - t < 60]
     if len(times) >= 4:
-        await bot.reply_to(message, "🚫 شما در هر دقیقه فقط مجاز به ارسال ۴ پیام هستید.\nبرای استفاده نامحدود، اشتراک تهیه کنید.")
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("💎 ارتقا به نامحدود", url="https://zarinp.al/707658"))
+        await bot.reply_to(message, "🚫 شما در هر دقیقه فقط مجاز به ارسال ۴ پیام هستید.\nبرای استفاده نامحدود، اشتراک تهیه کنید.", reply_markup=markup)
         return False
     times.append(now)
     user_message_times[user_id] = times
