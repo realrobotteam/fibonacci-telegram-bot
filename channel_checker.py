@@ -22,5 +22,5 @@ def get_join_channel_markup() -> types.InlineKeyboardMarkup:
     """
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}"))
-    markup.add(types.InlineKeyboardButton("🚀 شروع چت", switch_inline_query_current_chat="/start"))
+    markup.add(types.InlineKeyboardButton("🚀 شروع چت", "/start"))
     return markup 
