@@ -25,6 +25,21 @@ def get_welcome_markup() -> InlineKeyboardMarkup:
     markup.add(InlineKeyboardButton("🚀 شروع استفاده از ربات", url="https://t.me/fibonacciaibot"))
     return markup
 
+def get_assistants_markup() -> InlineKeyboardMarkup:
+    """
+    ایجاد دکمه‌های دستیارها
+    """
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("👨‍💻 برنامه‌نویس", callback_data="assistant_programmer"),
+        InlineKeyboardButton("🎨 گرافیست", callback_data="assistant_designer")
+    )
+    markup.add(
+        InlineKeyboardButton("📝 نویسنده", callback_data="assistant_writer"),
+        InlineKeyboardButton("🎓 معلم", callback_data="assistant_teacher")
+    )
+    return markup
+
 def get_support_markup() -> InlineKeyboardMarkup:
     """
     ایجاد دکمه‌های حمایت مالی
@@ -37,6 +52,9 @@ def get_support_markup() -> InlineKeyboardMarkup:
     markup.add(
         InlineKeyboardButton("📱 کانال آپارات", url="https://www.aparat.com/fibonaccii"),
         InlineKeyboardButton("📚 وبلاگ آموزشی", url="https://fibonacci.monster/blog/")
+    )
+    markup.add(
+        InlineKeyboardButton("🤖 دستیارهای هوشمند", callback_data="show_assistants")
     )
     return markup
 
@@ -115,6 +133,7 @@ async def start(message: Message, bot: TeleBot) -> None:
 • از دستور /gemini برای استفاده از مدل پیشرفته استفاده کنید
 • از دستور /draw برای طراحی تصاویر استفاده کنید
 • از دستور /edit برای ویرایش عکس‌ها استفاده کنید
+• از دستیارهای هوشمند ما استفاده کنید
 
 💡 مثال‌ها:
 • `/gemini هوش مصنوعی چیست؟`
@@ -255,3 +274,62 @@ async def draw_handler(message: Message, bot: TeleBot) -> None:
         await gemini.gemini_draw(bot, message, m)
     finally:
         await bot.delete_message(chat_id=message.chat.id, message_id=drawing_msg.message_id)
+
+async def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
+    """
+    هندلر کلیک روی دکمه‌های دستیار
+    """
+    assistant_prompts = {
+        "assistant_programmer": """
+👨‍💻 من یک برنامه‌نویس حرفه‌ای هستم و می‌تونم در موارد زیر کمکتون کنم:
+
+• نوشتن و دیباگ کردن کد
+• طراحی معماری نرم‌افزار
+• بهینه‌سازی کد
+• آموزش برنامه‌نویسی
+• حل مشکلات فنی
+
+برای شروع، سوال برنامه‌نویسی خودتون رو بپرسید.
+""",
+        "assistant_designer": """
+🎨 من یک گرافیست و طراح هستم و می‌تونم در موارد زیر کمکتون کنم:
+
+• طراحی لوگو و برندینگ
+• طراحی رابط کاربری
+• طراحی گرافیکی
+• ویرایش تصاویر
+• ایده‌پردازی بصری
+
+برای شروع، پروژه طراحی خودتون رو توضیح بدید.
+""",
+        "assistant_writer": """
+📝 من یک نویسنده و محتوا‌ساز هستم و می‌تونم در موارد زیر کمکتون کنم:
+
+• نوشتن مقاله و محتوا
+• ویرایش و بازنویسی متن
+• ایده‌پردازی برای محتوا
+• نگارش متون تبلیغاتی
+• ترجمه و بومی‌سازی
+
+برای شروع، موضوع نوشتن خودتون رو مطرح کنید.
+""",
+        "assistant_teacher": """
+🎓 من یک معلم و مربی هستم و می‌تونم در موارد زیر کمکتون کنم:
+
+• آموزش مفاهیم درسی
+• حل مسائل ریاضی و فیزیک
+• آموزش زبان انگلیسی
+• مشاوره تحصیلی
+• تدریس خصوصی
+
+برای شروع، سوال درسی خودتون رو بپرسید.
+"""
+    }
+    
+    if call.data in assistant_prompts:
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            escape(assistant_prompts[call.data]),
+            parse_mode="MarkdownV2"
+        )

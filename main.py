@@ -4,8 +4,17 @@ import asyncio
 import re
 import telebot
 from telebot.async_telebot import AsyncTeleBot
-import handlers
+from telebot.asyncio_handler_backends import State, StatesGroup
+from telebot.asyncio_storage import StateMemoryStorage
+from telebot import types
+import os
 from config import conf, generation_config, safety_settings
+from handlers import (
+    start, gemini_stream_handler, gemini_pro_stream_handler, clear, switch,
+    gemini_private_handler, gemini_photo_handler, gemini_edit_handler, draw_handler,
+    handle_channel_membership, handle_assistant_callback
+)
+from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
 
 # Init args
 parser = argparse.ArgumentParser()
@@ -53,6 +62,19 @@ async def main():
         func=lambda chat_member: True,
         pass_bot=True
     )
+
+    # Register callback handler
+    @bot.callback_query_handler(func=lambda call: call.data.startswith('assistant_') or call.data == 'show_assistants')
+    async def callback_handler(call: types.CallbackQuery):
+        if call.data == 'show_assistants':
+            await bot.answer_callback_query(call.id)
+            await bot.send_message(
+                call.message.chat.id,
+                "🤖 لطفاً یکی از دستیارهای هوشمند را انتخاب کنید:",
+                reply_markup=get_assistants_markup()
+            )
+        else:
+            await handle_assistant_callback(call, bot)
 
     # Start bot
     print("Starting Gemini_Telegram_Bot.")
