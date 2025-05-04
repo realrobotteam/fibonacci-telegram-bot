@@ -1,5 +1,5 @@
 from telebot import TeleBot
-from telebot.types import Message, ChatMemberUpdated
+from telebot.types import Message, ChatMemberUpdated, InlineKeyboardMarkup, InlineKeyboardButton
 from md2tgmd import escape
 import traceback
 from config import conf
@@ -16,6 +16,14 @@ gemini_chat_dict        = gemini.gemini_chat_dict
 gemini_pro_chat_dict    = gemini.gemini_pro_chat_dict
 default_model_dict      = gemini.default_model_dict
 gemini_draw_dict        = gemini.gemini_draw_dict
+
+def get_welcome_markup() -> InlineKeyboardMarkup:
+    """
+    ایجاد دکمه‌های خوش‌آمدگویی
+    """
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🚀 شروع استفاده از ربات", url="https://t.me/fibonacciaibot"))
+    return markup
 
 async def check_user_membership(message: Message, bot: TeleBot) -> bool:
     """
@@ -46,12 +54,14 @@ async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot
 • از دستور /draw برای طراحی استفاده کنید
 • و خیلی امکانات دیگه...
 
-💡 برای دیدن راهنمای کامل، دستور /start رو ارسال کنید.
+💡 برای دیدن راهنمای کامل، روی دکمه زیر کلیک کنید و دستور /start رو ارسال کنید.
 """
         try:
+            # ارسال پیام در کانال
             await bot.send_message(
-                chat_member.new_chat_member.user.id,
+                CHANNEL_ID,
                 welcome_text,
+                reply_markup=get_welcome_markup(),
                 parse_mode="MarkdownV2"
             )
         except Exception as e:
