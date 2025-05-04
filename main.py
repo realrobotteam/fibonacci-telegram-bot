@@ -46,6 +46,13 @@ async def main():
         func=lambda message: message.chat.type == "private",
         content_types=['text'],
         pass_bot=True)
+    
+    # Register channel membership handler
+    bot.register_chat_member_handler(
+        handlers.handle_channel_membership,
+        func=lambda chat_member: True,
+        pass_bot=True
+    )
 
     # Start bot
     print("Starting Gemini_Telegram_Bot.")

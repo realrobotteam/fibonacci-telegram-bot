@@ -1,10 +1,10 @@
 from telebot import TeleBot
-from telebot.types import Message
+from telebot.types import Message, ChatMemberUpdated
 from md2tgmd import escape
 import traceback
 from config import conf
 import gemini
-from channel_checker import check_membership, get_join_channel_markup
+from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
 
 error_info              =       conf["error_info"]
 before_generate_info    =       conf["before_generate_info"]
@@ -29,6 +29,33 @@ async def check_user_membership(message: Message, bot: TeleBot) -> bool:
         )
         return False
     return True
+
+async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot) -> None:
+    """
+    هندلر رویداد عضویت در کانال
+    """
+    if chat_member.chat.id == CHANNEL_ID and chat_member.new_chat_member.status in ['member', 'administrator', 'creator']:
+        welcome_text = f"""
+🎉 به خانواده ما خوش آمدید {chat_member.new_chat_member.user.first_name} عزیز!
+
+✅ حالا می‌تونید از تمام قابلیت‌های ربات استفاده کنید.
+
+📝 برای شروع می‌تونید:
+• سوالات خود رو بپرسید
+• از دستور /gemini استفاده کنید
+• از دستور /draw برای طراحی استفاده کنید
+• و خیلی امکانات دیگه...
+
+💡 برای دیدن راهنمای کامل، دستور /start رو ارسال کنید.
+"""
+        try:
+            await bot.send_message(
+                chat_member.new_chat_member.user.id,
+                welcome_text,
+                parse_mode="MarkdownV2"
+            )
+        except Exception as e:
+            print(f"Error sending welcome message: {e}")
 
 async def start(message: Message, bot: TeleBot) -> None:
     try:
