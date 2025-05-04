@@ -5,8 +5,6 @@ import traceback
 from config import conf
 import gemini
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
-from admin_panel import admin_panel, handle_admin_callback, broadcast_message, is_admin
-from datetime import datetime
 
 error_info              =       conf["error_info"]
 before_generate_info    =       conf["before_generate_info"]
@@ -105,23 +103,6 @@ async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot
 
 async def start(message: Message, bot: TeleBot) -> None:
     try:
-        # ذخیره اطلاعات کاربر
-        users = load_users()
-        user_id = str(message.from_user.id)
-        if user_id not in users:
-            users[user_id] = {
-                "username": message.from_user.username,
-                "first_name": message.from_user.first_name,
-                "join_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-            save_users(users)
-            
-            # به‌روزرسانی آمار
-            stats = load_stats()
-            stats["total_users"] += 1
-            stats["active_users"] += 1
-            save_stats(stats)
-
         if not await check_user_membership(message, bot):
             return
         welcome_text = escape(f"""
@@ -204,12 +185,6 @@ async def switch(message: Message, bot: TeleBot) -> None:
 async def gemini_private_handler(message: Message, bot: TeleBot) -> None:
     if not await check_user_membership(message, bot):
         return
-    
-    # به‌روزرسانی آمار پیام‌ها
-    stats = load_stats()
-    stats["total_messages"] += 1
-    save_stats(stats)
-    
     m = message.text.strip()
     if str(message.from_user.id) not in default_model_dict:
         default_model_dict[str(message.from_user.id)] = True
@@ -280,12 +255,3 @@ async def draw_handler(message: Message, bot: TeleBot) -> None:
         await gemini.gemini_draw(bot, message, m)
     finally:
         await bot.delete_message(chat_id=message.chat.id, message_id=drawing_msg.message_id)
-
-# اضافه کردن دستورات ادمین
-async def admin_command(message: Message, bot: TeleBot) -> None:
-    """دستور /admin برای دسترسی به پنل ادمین"""
-    await admin_panel(message, bot)
-
-async def admin_callback_handler(call, bot: TeleBot) -> None:
-    """پردازش کلیک روی دکمه‌های پنل ادمین"""
-    await handle_admin_callback(call, bot)
