@@ -86,7 +86,7 @@ async def check_user_membership(message: Message, bot: TeleBot) -> bool:
     if not await check_membership(bot, message.from_user.id):
         await bot.reply_to(
             message,
-            "⚠️ برای استفاده از ربات، ابتدا باید در کانال ما عضو شوید:",
+            "⚠️ برای استفاده از ربات، ابتدا باید در کانال ما عضو شوید: /Start",
             reply_markup=get_join_channel_markup()
         )
         return False
