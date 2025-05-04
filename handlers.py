@@ -5,6 +5,7 @@ import traceback
 from config import conf
 import gemini
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
+import time
 
 error_info              =       conf["error_info"]
 before_generate_info    =       conf["before_generate_info"]
@@ -16,6 +17,8 @@ gemini_chat_dict        = gemini.gemini_chat_dict
 gemini_pro_chat_dict    = gemini.gemini_pro_chat_dict
 default_model_dict      = gemini.default_model_dict
 gemini_draw_dict        = gemini.gemini_draw_dict
+
+user_message_times = {}
 
 def get_welcome_markup() -> InlineKeyboardMarkup:
     """
@@ -57,6 +60,22 @@ def get_support_markup() -> InlineKeyboardMarkup:
         InlineKeyboardButton("🤖 دستیارهای هوشمند", callback_data="show_assistants")
     )
     return markup
+
+async def check_rate_limit(message: Message, bot: TeleBot) -> bool:
+    """
+    بررسی محدودیت تعداد پیام در دقیقه برای هر کاربر
+    """
+    user_id = message.from_user.id
+    now = time.time()
+    times = user_message_times.get(user_id, [])
+    # فقط پیام‌های ۶۰ ثانیه اخیر را نگه می‌داریم
+    times = [t for t in times if now - t < 60]
+    if len(times) >= 4:
+        await bot.reply_to(message, "🚫 شما در هر دقیقه فقط مجاز به ارسال ۴ پیام هستید.\nبرای استفاده نامحدود، اشتراک تهیه کنید.")
+        return False
+    times.append(now)
+    user_message_times[user_id] = times
+    return True
 
 async def check_user_membership(message: Message, bot: TeleBot) -> bool:
     """
@@ -120,6 +139,8 @@ async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot
                 print(f"Error sending channel message: {e2}")
 
 async def start(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
     try:
         if not await check_user_membership(message, bot):
             return
