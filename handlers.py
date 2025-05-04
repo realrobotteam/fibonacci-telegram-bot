@@ -238,8 +238,8 @@ async def gemini_private_handler(message: Message, bot: TeleBot) -> None:
     if not await check_user_membership(message, bot):
         return
     m = message.text.strip()
-    if m.lower() in ["تو توسط چه کسی طراحی شدی", "who created you", "who made you"]:
-        await bot.reply_to(message, "من توسط تیم رئال ربات و پلتفرم هوش مصنوعی فیبوناچی ساخته شدم.")
+    if m.lower() in ["تو توسط چه کسی طراحی شدی", "who created you", "who made you", "who are you", "what are you"]:
+        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
         return
     if str(message.from_user.id) not in default_model_dict:
         default_model_dict[str(message.from_user.id)] = True
