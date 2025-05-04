@@ -5,6 +5,7 @@ import traceback
 from config import conf
 import gemini
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
+from admin_panel import handle_admin_command, handle_admin_callback, save_user, is_admin, broadcast_message
 
 error_info              =       conf["error_info"]
 before_generate_info    =       conf["before_generate_info"]
@@ -103,6 +104,13 @@ async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot
 
 async def start(message: Message, bot: TeleBot) -> None:
     try:
+        # ذخیره اطلاعات کاربر
+        save_user(
+            message.from_user.id,
+            message.from_user.username,
+            message.from_user.first_name
+        )
+        
         if not await check_user_membership(message, bot):
             return
         welcome_text = escape(f"""
@@ -255,3 +263,19 @@ async def draw_handler(message: Message, bot: TeleBot) -> None:
         await gemini.gemini_draw(bot, message, m)
     finally:
         await bot.delete_message(chat_id=message.chat.id, message_id=drawing_msg.message_id)
+
+async def handle_message(message: Message, bot: TeleBot) -> None:
+    """مدیریت پیام‌های دریافتی"""
+    # اگر پیام از ادمین است و در حالت ارسال پیام به همه است
+    if is_admin(message.from_user.id) and message.text and message.text.startswith("/broadcast"):
+        await broadcast_message(message, bot)
+        return
+    
+    # پردازش پیام‌های عادی
+    await gemini_private_handler(message, bot)
+
+async def handle_callback(call, bot: TeleBot) -> None:
+    """مدیریت کلیک روی دکمه‌ها"""
+    if call.data.startswith("admin_"):
+        await handle_admin_callback(call, bot)
+        return

@@ -2,165 +2,142 @@ from telebot import TeleBot
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import json
 import os
-from datetime import datetime
 
 # لیست ادمین‌ها
-ADMIN_IDS = [1066860490]  # شناسه عددی ادمین‌ها را اینجا قرار دهید
+ADMIN_IDS = [
+    -1066860490,  # شناسه عددی ادمین
+    # شناسه‌های ادمین‌های دیگر را اینجا اضافه کنید
+]
 
-# مسیر فایل‌های ذخیره‌سازی
-STATS_FILE = "stats.json"
-USERS_FILE = "users.json"
+# مسیر فایل ذخیره‌سازی اطلاعات کاربران
+USERS_DB_FILE = "users_db.json"
 
 def is_admin(user_id: int) -> bool:
     """بررسی ادمین بودن کاربر"""
     return user_id in ADMIN_IDS
 
-def load_stats() -> dict:
-    """بارگذاری آمار از فایل"""
-    if os.path.exists(STATS_FILE):
-        with open(STATS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {
-        "total_users": 0,
-        "active_users": 0,
-        "total_messages": 0,
-        "start_date": datetime.now().strftime("%Y-%m-%d")
-    }
-
-def save_stats(stats: dict):
-    """ذخیره آمار در فایل"""
-    with open(STATS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(stats, f, ensure_ascii=False, indent=4)
-
-def load_users() -> dict:
-    """بارگذاری لیست کاربران از فایل"""
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {}
-
-def save_users(users: dict):
-    """ذخیره لیست کاربران در فایل"""
-    with open(USERS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(users, f, ensure_ascii=False, indent=4)
-
 def get_admin_markup() -> InlineKeyboardMarkup:
     """ایجاد دکمه‌های پنل ادمین"""
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
-        InlineKeyboardButton("📊 آمار کلی", callback_data="admin_stats"),
-        InlineKeyboardButton("👥 لیست کاربران", callback_data="admin_users")
+        InlineKeyboardButton("👥 لیست کاربران", callback_data="admin_list_users"),
+        InlineKeyboardButton("📊 آمار کلی", callback_data="admin_stats")
     )
     markup.add(
         InlineKeyboardButton("📨 ارسال پیام به همه", callback_data="admin_broadcast"),
-        InlineKeyboardButton("🔍 جستجوی کاربر", callback_data="admin_search")
+        InlineKeyboardButton("🔍 جستجوی کاربر", callback_data="admin_search_user")
     )
     return markup
 
-async def admin_panel(message: Message, bot: TeleBot) -> None:
-    """نمایش پنل ادمین"""
+def save_user(user_id: int, username: str = None, first_name: str = None):
+    """ذخیره اطلاعات کاربر در دیتابیس"""
+    users = load_users()
+    if str(user_id) not in users:
+        users[str(user_id)] = {
+            "username": username,
+            "first_name": first_name,
+            "join_date": None
+        }
+        save_users(users)
+
+def load_users() -> dict:
+    """بارگذاری اطلاعات کاربران از دیتابیس"""
+    if os.path.exists(USERS_DB_FILE):
+        with open(USERS_DB_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def save_users(users: dict):
+    """ذخیره اطلاعات کاربران در دیتابیس"""
+    with open(USERS_DB_FILE, 'w', encoding='utf-8') as f:
+        json.dump(users, f, ensure_ascii=False, indent=4)
+
+async def handle_admin_command(message: Message, bot: TeleBot):
+    """مدیریت دستورات ادمین"""
     if not is_admin(message.from_user.id):
-        await bot.reply_to(message, "⚠️ شما دسترسی به پنل ادمین ندارید!")
+        await bot.reply_to(message, "⚠️ شما دسترسی به این بخش را ندارید.")
         return
 
-    welcome_text = """
-🔰 پنل مدیریت ربات
+    await bot.reply_to(
+        message,
+        "🔐 پنل مدیریت\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
+        reply_markup=get_admin_markup()
+    )
 
-لطفاً یکی از گزینه‌های زیر را انتخاب کنید:
-
-📊 آمار کلی: مشاهده آمار کلی ربات
-👥 لیست کاربران: مشاهده لیست کاربران
-📨 ارسال پیام به همه: ارسال پیام به تمام کاربران
-🔍 جستجوی کاربر: جستجو در بین کاربران
-"""
-    await bot.reply_to(message, welcome_text, reply_markup=get_admin_markup())
-
-async def handle_admin_callback(call, bot: TeleBot) -> None:
-    """پردازش کلیک روی دکمه‌های پنل ادمین"""
+async def handle_admin_callback(call, bot: TeleBot):
+    """مدیریت کلیک روی دکمه‌های پنل ادمین"""
     if not is_admin(call.from_user.id):
-        await bot.answer_callback_query(call.id, "⚠️ شما دسترسی به پنل ادمین ندارید!")
+        await bot.answer_callback_query(call.id, "⚠️ شما دسترسی به این بخش را ندارید.")
         return
 
-    if call.data == "admin_stats":
-        stats = load_stats()
-        stats_text = f"""
+    if call.data == "admin_list_users":
+        users = load_users()
+        text = "👥 لیست کاربران:\n\n"
+        for user_id, user_data in users.items():
+            text += f"🆔 ID: {user_id}\n"
+            if user_data.get("username"):
+                text += f"👤 Username: @{user_data['username']}\n"
+            if user_data.get("first_name"):
+                text += f"📝 Name: {user_data['first_name']}\n"
+            text += "➖➖➖➖➖➖➖➖➖➖\n"
+        
+        # تقسیم پیام به بخش‌های کوچکتر اگر خیلی طولانی باشد
+        if len(text) > 4000:
+            parts = [text[i:i+4000] for i in range(0, len(text), 4000)]
+            for part in parts:
+                await bot.send_message(call.message.chat.id, part)
+        else:
+            await bot.send_message(call.message.chat.id, text)
+
+    elif call.data == "admin_stats":
+        users = load_users()
+        total_users = len(users)
+        text = f"""
 📊 آمار کلی ربات:
 
-👥 تعداد کل کاربران: {stats['total_users']}
-✅ کاربران فعال: {stats['active_users']}
-💬 تعداد کل پیام‌ها: {stats['total_messages']}
-📅 تاریخ شروع: {stats['start_date']}
+👥 تعداد کل کاربران: {total_users}
 """
-        await bot.edit_message_text(
-            stats_text,
-            call.message.chat.id,
-            call.message.message_id,
-            reply_markup=get_admin_markup()
-        )
-
-    elif call.data == "admin_users":
-        users = load_users()
-        users_text = f"""
-👥 لیست کاربران:
-
-تعداد کل: {len(users)}
-"""
-        for user_id, user_data in list(users.items())[:10]:  # نمایش 10 کاربر اول
-            users_text += f"\n👤 {user_data.get('username', 'بدون نام کاربری')} (ID: {user_id})"
-        
-        if len(users) > 10:
-            users_text += f"\n\n... و {len(users) - 10} کاربر دیگر"
-
-        await bot.edit_message_text(
-            users_text,
-            call.message.chat.id,
-            call.message.message_id,
-            reply_markup=get_admin_markup()
-        )
+        await bot.send_message(call.message.chat.id, text)
 
     elif call.data == "admin_broadcast":
-        await bot.edit_message_text(
-            "📨 لطفاً پیام خود را برای ارسال به همه کاربران ارسال کنید:",
+        await bot.send_message(
             call.message.chat.id,
-            call.message.message_id
+            "📨 لطفاً پیام خود را برای ارسال به همه کاربران ارسال کنید:"
         )
-        # ذخیره وضعیت برای دریافت پیام بعدی
-        # این بخش نیاز به پیاده‌سازی state management دارد
+        # این وضعیت را در یک متغیر ذخیره کنید تا در هندلر پیام‌های بعدی بررسی شود
 
-    elif call.data == "admin_search":
-        await bot.edit_message_text(
-            "🔍 لطفاً نام کاربری یا شناسه کاربر را وارد کنید:",
+    elif call.data == "admin_search_user":
+        await bot.send_message(
             call.message.chat.id,
-            call.message.message_id
+            "🔍 لطفاً شناسه یا نام کاربری کاربر مورد نظر را ارسال کنید:"
         )
-        # ذخیره وضعیت برای دریافت پیام بعدی
-        # این بخش نیاز به پیاده‌سازی state management دارد
+        # این وضعیت را در یک متغیر ذخیره کنید تا در هندلر پیام‌های بعدی بررسی شود
 
-async def broadcast_message(message: Message, bot: TeleBot) -> None:
+async def broadcast_message(message: Message, bot: TeleBot):
     """ارسال پیام به همه کاربران"""
     if not is_admin(message.from_user.id):
         return
 
     users = load_users()
-    success = 0
+    sent = 0
     failed = 0
-
+    
     await bot.reply_to(message, "🔄 در حال ارسال پیام به کاربران...")
-
-    for user_id in users:
+    
+    for user_id in users.keys():
         try:
             await bot.send_message(user_id, message.text)
-            success += 1
+            sent += 1
         except Exception as e:
             print(f"Error sending message to {user_id}: {e}")
             failed += 1
-
+    
     await bot.reply_to(
         message,
         f"""
 ✅ ارسال پیام به اتمام رسید:
 
-✅ موفق: {success}
-❌ ناموفق: {failed}
+✅ ارسال موفق: {sent}
+❌ ارسال ناموفق: {failed}
 """
     ) 
