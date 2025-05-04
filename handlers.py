@@ -34,6 +34,10 @@ def get_support_markup() -> InlineKeyboardMarkup:
         InlineKeyboardButton("💎 حمایت مالی", url="https://zarinp.al/707658"),
         InlineKeyboardButton("📢 کانال ما", url="https://t.me/fibonacciai")
     )
+    markup.add(
+        InlineKeyboardButton("📱 کانال آپارات", url="https://www.aparat.com/fibonaccii"),
+        InlineKeyboardButton("📚 وبلاگ آموزشی", url="https://fibonacci.monster/blog/")
+    )
     return markup
 
 async def check_user_membership(message: Message, bot: TeleBot) -> bool:
