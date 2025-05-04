@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 
 # لیست ادمین‌ها
-ADMIN_IDS = [123456789]  # شناسه عددی ادمین‌ها را اینجا قرار دهید
+ADMIN_IDS = [1066860490]  # شناسه عددی ادمین‌ها را اینجا قرار دهید
 
 # مسیر فایل‌های ذخیره‌سازی
 STATS_FILE = "stats.json"
