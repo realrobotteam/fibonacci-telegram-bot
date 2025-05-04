@@ -1,8 +1,8 @@
 from google.genai import types
 
 # تنظیمات کانال
-CHANNEL_USERNAME = "@your_channel_username"  # نام کاربری کانال خود را اینجا قرار دهید
-CHANNEL_ID = -1001234567890  # شناسه عددی کانال خود را اینجا قرار دهید
+CHANNEL_USERNAME = "@fibonacciai"  # نام کاربری کانال خود را اینجا قرار دهید
+CHANNEL_ID = -1002081035666  # شناسه عددی کانال خود را اینجا قرار دهید
 
 conf = {
     "error_info":           "⚠️⚠️⚠️\nSomething went wrong !\nplease try to change your prompt or contact the admin !",
