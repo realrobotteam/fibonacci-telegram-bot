@@ -42,23 +42,23 @@ async def main():
     print("Bot init done.")
 
     # Init commands
-    bot.register_message_handler(handlers.start,                         commands=['start'],         pass_bot=True)
-    bot.register_message_handler(handlers.gemini_stream_handler,         commands=['gemini'],        pass_bot=True)
-    bot.register_message_handler(handlers.gemini_pro_stream_handler,     commands=['gemini_pro'],    pass_bot=True)
-    bot.register_message_handler(handlers.draw_handler,                  commands=['draw'],          pass_bot=True)
-    bot.register_message_handler(handlers.gemini_edit_handler,           commands=['edit'],          pass_bot=True)
-    bot.register_message_handler(handlers.clear,                         commands=['clear'],         pass_bot=True)
-    bot.register_message_handler(handlers.switch,                        commands=['switch'],        pass_bot=True)
-    bot.register_message_handler(handlers.gemini_photo_handler,          content_types=["photo"],    pass_bot=True)
+    bot.register_message_handler(start,                         commands=['start'],         pass_bot=True)
+    bot.register_message_handler(gemini_stream_handler,         commands=['gemini'],        pass_bot=True)
+    bot.register_message_handler(gemini_pro_stream_handler,     commands=['gemini_pro'],    pass_bot=True)
+    bot.register_message_handler(draw_handler,                  commands=['draw'],          pass_bot=True)
+    bot.register_message_handler(gemini_edit_handler,           commands=['edit'],          pass_bot=True)
+    bot.register_message_handler(clear,                         commands=['clear'],         pass_bot=True)
+    bot.register_message_handler(switch,                        commands=['switch'],        pass_bot=True)
+    bot.register_message_handler(gemini_photo_handler,          content_types=["photo"],    pass_bot=True)
     bot.register_message_handler(
-        handlers.gemini_private_handler,
+        gemini_private_handler,
         func=lambda message: message.chat.type == "private",
         content_types=['text'],
         pass_bot=True)
     
     # Register channel membership handler
     bot.register_chat_member_handler(
-        handlers.handle_channel_membership,
+        handle_channel_membership,
         func=lambda chat_member: True,
         pass_bot=True
     )
