@@ -684,7 +684,7 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
         return  # اگر کاربر دسته‌ای انتخاب نکرده باشد، کاری انجام نمی‌شود
     content_type = user_content_state[user_id]['type']
     prompt = message.text.strip()
-    # پیام راهنما بر اساس دسته انتخابی (همه ابزارها و تولید محتوا)
+    # پیام راهنما بر اساس دسته انتخابی (همه ابزارها و تولید محتوا و دستیارها)
     content_prompts = {
         "content_article": f"یک مقاله یا پست وبلاگ با موضوع زیر بنویس:\n{prompt}",
         "content_caption": f"یک کپشن جذاب برای شبکه اجتماعی با موضوع زیر بنویس:\n{prompt}",
@@ -710,7 +710,22 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
         "tool_challenge": f"یک پیام دعوت به چالش یا مسابقه با این موضوع بنویس: {prompt}",
         "tool_appintro": f"یک متن معرفی برای این اپلیکیشن یا استارتاپ بنویس: {prompt}",
         "tool_support": f"یک پاسخ حرفه‌ای برای پشتیبانی مشتری درباره این موضوع بنویس: {prompt}",
-        "tool_guide": f"یک راهنمای گام‌به‌گام یا FAQ برای این محصول یا موضوع بنویس: {prompt}"
+        "tool_guide": f"یک راهنمای گام‌به‌گام یا FAQ برای این محصول یا موضوع بنویس: {prompt}",
+        "assistant_programmer": f"به عنوان یک برنامه‌نویس حرفه‌ای، {prompt}",
+        "assistant_designer": f"به عنوان یک گرافیست و طراح، {prompt}",
+        "assistant_writer": f"به عنوان یک نویسنده و محتوا‌ساز، {prompt}",
+        "assistant_teacher": f"به عنوان یک معلم و مربی، {prompt}",
+        "assistant_translator": f"به عنوان یک مترجم و مدرس زبان، {prompt}",
+        "assistant_job": f"به عنوان یک مشاور شغلی و رزومه‌نویس، {prompt}",
+        "assistant_marketing": f"به عنوان یک دستیار بازاریابی و تبلیغات، {prompt}",
+        "assistant_legal": f"به عنوان یک دستیار حقوقی، {prompt}",
+        "assistant_psychology": f"به عنوان یک دستیار روانشناسی و انگیزشی، {prompt}",
+        "assistant_travel": f"به عنوان یک دستیار سفر و گردشگری، {prompt}",
+        "assistant_finance": f"به عنوان یک دستیار مالی و حسابداری، {prompt}",
+        "assistant_health": f"به عنوان یک دستیار سلامت و تغذیه، {prompt}",
+        "assistant_poetry": f"به عنوان یک دستیار شعر و ادبیات، {prompt}",
+        "assistant_kids": f"به عنوان یک دستیار کودک و سرگرمی، {prompt}",
+        "assistant_news": f"به عنوان یک دستیار اخبار و اطلاعات روز، {prompt}"
     }
     # اگر کلید وجود داشت، پرامپت را ارسال کن
     if content_type in content_prompts:
@@ -811,37 +826,3 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
             "به منوی اصلی بازگشتید.",
             reply_markup=get_support_markup()
         )
-
-async def handle_assistant_text(message: Message, bot: TeleBot) -> None:
-    user_id = message.from_user.id
-    print("assistant handler called", user_id, user_content_state.get(user_id))
-    await bot.send_message(message.chat.id, "در حال پردازش درخواست دستیار ...")
-    if user_id not in user_content_state:
-        return
-    
-    content_type = user_content_state[user_id]['type']
-    if not content_type.startswith('assistant_'):
-        return
-        
-    prompt = message.text.strip()
-    # اضافه کردن پیشوند مناسب برای هر دستیار
-    assistant_prefixes = {
-        "assistant_programmer": "به عنوان یک برنامه‌نویس حرفه‌ای، ",
-        "assistant_designer": "به عنوان یک گرافیست و طراح، ",
-        "assistant_writer": "به عنوان یک نویسنده و محتوا‌ساز، ",
-        "assistant_teacher": "به عنوان یک معلم و مربی، ",
-        "assistant_translator": "به عنوان یک مترجم و مدرس زبان، ",
-        "assistant_job": "به عنوان یک مشاور شغلی و رزومه‌نویس، ",
-        "assistant_marketing": "به عنوان یک دستیار بازاریابی و تبلیغات، ",
-        "assistant_legal": "به عنوان یک دستیار حقوقی، ",
-        "assistant_psychology": "به عنوان یک دستیار روانشناسی و انگیزشی، ",
-        "assistant_travel": "به عنوان یک دستیار سفر و گردشگری، ",
-        "assistant_finance": "به عنوان یک دستیار مالی و حسابداری، ",
-        "assistant_health": "به عنوان یک دستیار سلامت و تغذیه، ",
-        "assistant_poetry": "به عنوان یک دستیار شعر و ادبیات، ",
-        "assistant_kids": "به عنوان یک دستیار کودک و سرگرمی، ",
-        "assistant_news": "به عنوان یک دستیار اخبار و اطلاعات روز، "
-    }
-    
-    full_prompt = assistant_prefixes.get(content_type, "") + prompt
-    await gemini.gemini_stream(bot, message, full_prompt, model_1)
