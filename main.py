@@ -46,10 +46,10 @@ async def main():
 
     # Register content text handler (در ابتدای ثبت هندلرها)
     bot.register_message_handler(
-        handle_content_text,
-        func=lambda message: message.from_user.id in handlers.user_content_state and not handlers_in_writer_topic_state(message),
+        central_text_handler,
         content_types=['text'],
-        pass_bot=True)
+        pass_bot=True
+    )
 
     # Init commands
     bot.register_message_handler(start,                         commands=['start'],         pass_bot=True)
@@ -119,6 +119,20 @@ async def main():
     # Start bot
     print("Starting Gemini_Telegram_Bot.")
     await bot.polling(none_stop=True)
+
+async def central_text_handler(message, bot):
+    from handlers import user_content_state, handle_content_text
+    from auto_writer import user_writer_settings, handle_writer_message
+    user_id = message.from_user.id
+    # اگر کاربر در حالت انتظار موضوع نویسنده خودکار است
+    if user_id in user_writer_settings and user_writer_settings[user_id].get('waiting_for_topic', False):
+        await handle_writer_message(message, bot)
+        return
+    # اگر کاربر در حالت تولید محتوا است
+    if user_id in user_content_state:
+        await handle_content_text(message, bot)
+        return
+    # در غیر این صورت هیچ کاری انجام نشود
 
 if __name__ == '__main__':
     asyncio.run(main())
