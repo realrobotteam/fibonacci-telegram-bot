@@ -1,4 +1,4 @@
-pyTelegramBotAPI
+pyTelegramBotAPI>=4.10.0
 google-genai
 aiohttp
 md2tgmd
