@@ -155,19 +155,6 @@ def get_special_tools_markup() -> InlineKeyboardMarkup:
     )
     return markup
 
-def get_user_reply_markup() -> InlineKeyboardMarkup:
-    markup = InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        InlineKeyboardButton("👍 پسندیدم", callback_data="like"),
-        InlineKeyboardButton("👎 نپسندیدم", callback_data="dislike"),
-        InlineKeyboardButton("🔄 دوباره تولید کن", callback_data="regenerate"),
-        InlineKeyboardButton("✏️ ویرایش", callback_data="edit"),
-        InlineKeyboardButton("📋 کپی", callback_data="copy"),
-        InlineKeyboardButton("💬 سوال جدید", callback_data="new_question"),
-        InlineKeyboardButton("🏠 منوی اصلی", callback_data="main_menu")
-    )
-    return markup
-
 async def check_rate_limit(message: Message, bot: TeleBot) -> bool:
     """
     بررسی محدودیت تعداد پیام در دقیقه برای هر کاربر
@@ -709,7 +696,7 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
         "content_resume": f"بر اساس اطلاعات زیر یک رزومه یا نامه اداری بنویس:\n{prompt}",
         "content_shop": f"یک متن مناسب برای معرفی محصول یا سایت با موضوع زیر بنویس:\n{prompt}",
         "content_ad": f"یک متن تبلیغاتی یا کمپین با موضوع زیر بنویس:\n{prompt}",
-        "tool_speech2text": f"لطفاً این ویس را به متن تبدیل کن (در حال حاضر فقط متن): {prompt}",
+        "tool_speech2text": f"لطفاً این ویس را به متن تبدیل کن (در حال حاضر فقط متن را بنویسید): {prompt}",
         "tool_congrats": f"یک پیام تبریک یا مناسبتی برای این مورد بنویس: {prompt}",
         "tool_funny": f"این متن را به طنز تبدیل کن یا یک شوخی درباره‌اش بساز: {prompt}",
         "tool_dialogue": f"یک دیالوگ یا سناریو با موضوع زیر بنویس: {prompt}",

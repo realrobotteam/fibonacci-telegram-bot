@@ -8,7 +8,7 @@ from md2tgmd import escape
 from telebot import TeleBot
 from config import conf, generation_config
 from google import genai
-from handlers import get_user_reply_markup
+from markups import get_user_reply_markup
 
 gemini_draw_dict = {}
 gemini_chat_dict = {}
