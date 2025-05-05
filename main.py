@@ -14,9 +14,10 @@ from handlers import (
     start, gemini_stream_handler, gemini_pro_stream_handler, clear, switch,
     gemini_private_handler, gemini_photo_handler, gemini_edit_handler, draw_handler,
     handle_channel_membership, handle_assistant_callback, get_assistants_markup,
-    get_content_menu_markup, handle_content_callback, handle_content_text, get_special_tools_markup, handle_special_tools_callback
+    get_content_menu_markup, handle_content_callback, handle_content_text, get_special_tools_markup, handle_special_tools_callback, handle_writer_menu
 )
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
+from auto_writer import handle_writer_callback, handle_writer_message, send_daily_content
 
 # Init args
 parser = argparse.ArgumentParser()
@@ -92,6 +93,24 @@ async def main():
     @bot.callback_query_handler(func=lambda call: call.data.startswith('tool_') or call.data == 'show_special_tools')
     async def special_tools_callback_handler(call: types.CallbackQuery):
         await handle_special_tools_callback(call, bot)
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith('writer_') or call.data == 'show_writer_menu')
+    async def writer_callback_handler(call: types.CallbackQuery):
+        if call.data == 'show_writer_menu':
+            await handle_writer_menu(call, bot)
+        else:
+            await handle_writer_callback(call, bot)
+
+    # Register writer message handler
+    bot.register_message_handler(
+        handle_writer_message,
+        func=lambda message: True,
+        content_types=['text'],
+        pass_bot=True
+    )
+
+    # Start daily content sender
+    asyncio.create_task(send_daily_content(bot))
 
     # Start bot
     print("Starting Gemini_Telegram_Bot.")

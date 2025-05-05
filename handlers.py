@@ -25,11 +25,15 @@ user_message_times = {}
 user_content_state = {}
 
 def get_welcome_markup() -> InlineKeyboardMarkup:
-    """
-    ایجاد دکمه‌های خوش‌آمدگویی
-    """
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🚀 شروع استفاده از ربات", url="https://t.me/fibonacciaibot"))
+    """منوی اصلی ربات"""
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("🤖 دستیارهای هوشمند", callback_data="show_assistants"),
+        types.InlineKeyboardButton("📝 تولید محتوا", callback_data="show_content_menu"),
+        types.InlineKeyboardButton("🛠️ ابزارهای ویژه", callback_data="show_special_tools"),
+        types.InlineKeyboardButton("✍️ نویسنده خودکار", callback_data="show_writer_menu"),
+        types.InlineKeyboardButton("💳 حمایت مالی", url="https://zarinp.al/707658")
+    )
     return markup
 
 def get_assistants_markup() -> InlineKeyboardMarkup:
@@ -811,3 +815,15 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
             "به منوی اصلی بازگشتید.",
             reply_markup=get_support_markup()
         )
+
+async def handle_writer_menu(call: types.CallbackQuery, bot):
+    """نمایش منوی نویسنده خودکار"""
+    from auto_writer import get_writer_menu_markup
+    await bot.edit_message_text(
+        "✍️ نویسنده خودکار\n\n"
+        "با این قابلیت می‌توانید موضوعات مورد نظر خود را تنظیم کنید و هر روز محتوای ترند و جذاب دریافت کنید.\n\n"
+        "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
+        call.message.chat.id,
+        call.message.message_id,
+        reply_markup=get_writer_menu_markup()
+    )
