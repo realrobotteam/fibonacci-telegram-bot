@@ -17,7 +17,7 @@ from handlers import (
     get_content_menu_markup, handle_content_callback, handle_content_text, get_special_tools_markup, handle_special_tools_callback, handle_writer_menu
 )
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
-from auto_writer import handle_writer_callback, handle_writer_message, send_daily_content
+from auto_writer import handle_writer_callback, handle_writer_message, send_daily_content, user_writer_settings
 
 # Init args
 parser = argparse.ArgumentParser()
@@ -101,10 +101,14 @@ async def main():
         else:
             await handle_writer_callback(call, bot)
 
+    def handlers_in_writer_topic_state(message):
+        user_id = message.from_user.id
+        return user_id in user_writer_settings and user_writer_settings[user_id].get('waiting_for_topic', False)
+
     # Register writer message handler
     bot.register_message_handler(
         handle_writer_message,
-        func=lambda message: True,
+        func=lambda message: handlers_in_writer_topic_state(message),
         content_types=['text'],
         pass_bot=True
     )
