@@ -601,12 +601,24 @@ async def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> No
             reply_markup=get_content_menu_markup()
         )
     elif call.data in content_guides:
+        # اگر state قبلی وجود داشت، پیام قبلی را حذف کن
+        if user_id in user_content_state and hasattr(user_content_state[user_id], 'last_message_id'):
+            try:
+                await bot.delete_message(call.message.chat.id, user_content_state[user_id].last_message_id)
+            except Exception:
+                pass
         user_content_state[user_id] = call.data
-        await bot.answer_callback_query(call.id)
-        await bot.send_message(
+        sent = await bot.send_message(
             call.message.chat.id,
             content_guides[call.data]
         )
+        # ذخیره آیدی پیام راهنما برای حذف بعدی
+        class StateObj(str):
+            pass
+        state_obj = StateObj(call.data)
+        state_obj.last_message_id = sent.message_id
+        user_content_state[user_id] = state_obj
+        await bot.answer_callback_query(call.id)
     elif call.data == "back_main_menu":
         await bot.answer_callback_query(call.id)
         await bot.send_message(
