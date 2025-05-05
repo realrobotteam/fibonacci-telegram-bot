@@ -47,7 +47,7 @@ async def main():
     # Register content text handler (در ابتدای ثبت هندلرها)
     bot.register_message_handler(
         handle_content_text,
-        func=lambda message: message.from_user.id in handlers.user_content_state,
+        func=lambda message: message.from_user.id in handlers.user_content_state and not handlers_in_writer_topic_state(message),
         content_types=['text'],
         pass_bot=True)
 
