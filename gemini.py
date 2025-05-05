@@ -8,7 +8,6 @@ from md2tgmd import escape
 from telebot import TeleBot
 from config import conf, generation_config
 from google import genai
-from markups import get_user_reply_markup
 
 gemini_draw_dict = {}
 gemini_chat_dict = {}
@@ -61,16 +60,15 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str):
                             escape(full_response),
                             chat_id=sent_message.chat.id,
                             message_id=sent_message.message_id,
-                            parse_mode="MarkdownV2",
-                            reply_markup=get_user_reply_markup()
-                        )
+                            parse_mode="MarkdownV2"
+                            )
                     except Exception as e:
                         if "parse markdown" in str(e).lower():
                             await bot.edit_message_text(
                                 full_response,
                                 chat_id=sent_message.chat.id,
                                 message_id=sent_message.message_id
-                            )
+                                )
                         else:
                             if "message is not modified" not in str(e).lower():
                                 print(f"Error updating message: {e}")
@@ -81,8 +79,7 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str):
                 escape(full_response),
                 chat_id=sent_message.chat.id,
                 message_id=sent_message.message_id,
-                parse_mode="MarkdownV2",
-                reply_markup=get_user_reply_markup()
+                parse_mode="MarkdownV2"
             )
         except Exception as e:
             try:

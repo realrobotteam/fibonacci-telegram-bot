@@ -1,12 +1,11 @@
 from telebot import TeleBot, types
-from telebot.types import Message, ChatMemberUpdated, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from telebot.types import Message, ChatMemberUpdated, InlineKeyboardMarkup, InlineKeyboardButton
 from md2tgmd import escape
 import traceback
 from config import conf
 import gemini
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
 import time
-from markups import get_user_reply_markup
 
 error_info              =       conf["error_info"]
 before_generate_info    =       conf["before_generate_info"]
@@ -155,48 +154,6 @@ def get_special_tools_markup() -> InlineKeyboardMarkup:
         InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu")
     )
     return markup
-
-def start(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "سلام! ربات آماده است.")
-
-def gemini_stream_handler(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "پاسخ تست جمینی (sync)")
-
-def gemini_pro_stream_handler(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "پاسخ تست جمینی پرو (sync)")
-
-def clear(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "تاریخچه پاک شد (sync)")
-
-def switch(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "مدل تغییر کرد (sync)")
-
-def gemini_private_handler(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "پاسخ تست خصوصی (sync)")
-
-def gemini_photo_handler(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "عکس دریافت شد (sync)")
-
-def gemini_edit_handler(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "ویرایش عکس (sync)")
-
-def draw_handler(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "طراحی تصویر (sync)")
-
-def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
-    bot.answer_callback_query(call.id)
-    bot.send_message(call.message.chat.id, "دستیار انتخاب شد (sync)")
-
-def handle_content_text(message: Message, bot: TeleBot) -> None:
-    bot.send_message(message.chat.id, "پاسخ تولید محتوا (sync)")
-
-def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
-    bot.answer_callback_query(call.id)
-    bot.send_message(call.message.chat.id, "دسته‌بندی محتوا انتخاب شد (sync)")
-
-def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
-    bot.answer_callback_query(call.id)
-    bot.send_message(call.message.chat.id, "ابزار ویژه انتخاب شد (sync)")
 
 async def check_rate_limit(message: Message, bot: TeleBot) -> bool:
     """
@@ -406,13 +363,17 @@ def is_creator_question(text: str) -> bool:
             return True
     return False
 
-async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot) -> None:
-    """
-    هندلر رویداد عضویت در کانال
-    """
-    if chat_member.chat.id == CHANNEL_ID and chat_member.new_chat_member.status in ['member', 'administrator', 'creator']:
+async def start(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
+    if is_creator_question(message.text):
+        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
+        return
+    try:
+        if not await check_user_membership(message, bot):
+            return
         welcome_text = escape(f"""
-👋 سلام {chat_member.new_chat_member.user.first_name} عزیز!
+👋 سلام {message.from_user.first_name} عزیز!
 
 🤖 به ربات هوش مصنوعی فیبوناچی خوش آمدید!
 
@@ -421,6 +382,7 @@ async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot
 • از دستور /gemini برای استفاده از مدل پیشرفته استفاده کنید
 • از دستور /draw برای طراحی تصاویر استفاده کنید
 • از دستور /edit برای ویرایش عکس‌ها استفاده کنید
+• از دستیارهای هوشمند ما استفاده کنید
 
 💡 مثال‌ها:
 • `/gemini هوش مصنوعی چیست؟`
@@ -434,22 +396,433 @@ async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot
 
 💝 اگر از ربات راضی هستید، می‌تونید از ما حمایت کنید
 """)
+        await bot.reply_to(message, welcome_text, parse_mode="MarkdownV2", reply_markup=get_support_markup())
+    except IndexError:
+        await bot.reply_to(message, error_info)
+
+async def gemini_stream_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
+    if is_creator_question(message.text):
+        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
+        return
+    if not await check_user_membership(message, bot):
+        return
+    try:
+        m = message.text.strip().split(maxsplit=1)[1].strip()
+    except IndexError:
+        await bot.reply_to(message, escape("Please add what you want to say after /gemini. \nFor example: `/gemini Who is john lennon?`"), parse_mode="MarkdownV2")
+        return
+    await gemini.gemini_stream(bot, message, m, model_1)
+
+async def gemini_pro_stream_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
+    if is_creator_question(message.text):
+        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
+        return
+    if not await check_user_membership(message, bot):
+        return
+    try:
+        m = message.text.strip().split(maxsplit=1)[1].strip()
+    except IndexError:
+        await bot.reply_to(message, escape("Please add what you want to say after /gemini_pro. \nFor example: `/gemini_pro Who is john lennon?`"), parse_mode="MarkdownV2")
+        return
+    await gemini.gemini_stream(bot, message, m, model_2)
+
+async def clear(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
+    if not await check_user_membership(message, bot):
+        return
+    # Check if the chat is already in gemini_chat_dict.
+    if (str(message.from_user.id) in gemini_chat_dict):
+        del gemini_chat_dict[str(message.from_user.id)]
+    if (str(message.from_user.id) in gemini_pro_chat_dict):
+        del gemini_pro_chat_dict[str(message.from_user.id)]
+    if (str(message.from_user.id) in gemini_draw_dict):
+        del gemini_draw_dict[str(message.from_user.id)]
+    await bot.reply_to(message, "Your history has been cleared")
+
+async def switch(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
+    if not await check_user_membership(message, bot):
+        return
+    if message.chat.type != "private":
+        await bot.reply_to( message , "This command is only for private chat !")
+        return
+    # Check if the chat is already in default_model_dict.
+    if str(message.from_user.id) not in default_model_dict:
+        default_model_dict[str(message.from_user.id)] = False
+        await bot.reply_to( message , "Now you are using "+model_2)
+        return
+    if default_model_dict[str(message.from_user.id)] == True:
+        default_model_dict[str(message.from_user.id)] = False
+        await bot.reply_to( message , "Now you are using "+model_2)
+    else:
+        default_model_dict[str(message.from_user.id)] = True
+        await bot.reply_to( message , "Now you are using "+model_1)
+
+async def gemini_private_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
+    if not await check_user_membership(message, bot):
+        return
+    m = message.text.strip()
+    if is_creator_question(m):
+        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
+        return
+    if str(message.from_user.id) not in default_model_dict:
+        default_model_dict[str(message.from_user.id)] = True
+        await gemini.gemini_stream(bot, message, m, model_1)
+    else:
+        if default_model_dict[str(message.from_user.id)]:
+            await gemini.gemini_stream(bot, message, m, model_1)
+        else:
+            await gemini.gemini_stream(bot, message, m, model_2)
+
+async def gemini_photo_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
+    if not await check_user_membership(message, bot):
+        return
+    if message.chat.type != "private":
+        s = message.caption or ""
+        if not s or not (s.startswith("/gemini")):
+            return
         try:
-            # ارسال پیام خصوصی به کاربر
-            await bot.send_message(
-                chat_member.new_chat_member.user.id,
-                welcome_text,
-                parse_mode="MarkdownV2",
-                reply_markup=get_support_markup()
-            )
-        except Exception as e:
-            print(f"Error sending welcome message: {e}")
-            # اگر نتوانست پیام خصوصی بفرستد، در کانال ارسال می‌کند
-            try:
-                await bot.send_message(
-                    CHANNEL_ID,
-                    f"🎉 به {chat_member.new_chat_member.user.first_name} عزیز خوش آمدید!\nبرای استفاده از ربات، به @fibonacciaibot مراجعه کنید.",
-                    reply_markup=get_welcome_markup()
-                )
-            except Exception as e2:
-                print(f"Error sending channel message: {e2}")
+            m = s.strip().split(maxsplit=1)[1].strip() if len(s.strip().split(maxsplit=1)) > 1 else ""
+            file_path = await bot.get_file(message.photo[-1].file_id)
+            photo_file = await bot.download_file(file_path.file_path)
+        except Exception:
+            traceback.print_exc()
+            await bot.reply_to(message, error_info)
+            return
+        await gemini.gemini_edit(bot, message, m, photo_file)
+    else:
+        s = message.caption or ""
+        try:
+            m = s.strip().split(maxsplit=1)[1].strip() if len(s.strip().split(maxsplit=1)) > 1 else ""
+            file_path = await bot.get_file(message.photo[-1].file_id)
+            photo_file = await bot.download_file(file_path.file_path)
+        except Exception:
+            traceback.print_exc()
+            await bot.reply_to(message, error_info)
+            return
+        await gemini.gemini_edit(bot, message, m, photo_file)
+
+async def gemini_edit_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
+    if not await check_user_membership(message, bot):
+        return
+    if not message.photo:
+        await bot.reply_to(message, "pls send a photo")
+        return
+    s = message.caption or ""
+    try:
+        m = s.strip().split(maxsplit=1)[1].strip() if len(s.strip().split(maxsplit=1)) > 1 else ""
+        file_path = await bot.get_file(message.photo[-1].file_id)
+        photo_file = await bot.download_file(file_path.file_path)
+    except Exception as e:
+        traceback.print_exc()
+        await bot.reply_to(message, e.str())
+        return
+    await gemini.gemini_edit(bot, message, m, photo_file)
+
+async def draw_handler(message: Message, bot: TeleBot) -> None:
+    if not await check_rate_limit(message, bot):
+        return
+    if not await check_user_membership(message, bot):
+        return
+    try:
+        m = message.text.strip().split(maxsplit=1)[1].strip()
+    except IndexError:
+        await bot.reply_to(message, escape("Please add what you want to draw after /draw. \nFor example: `/draw draw me a cat.`"), parse_mode="MarkdownV2")
+        return
+    
+    # reply to the message first, then delete the "drawing..." message
+    drawing_msg = await bot.reply_to(message, "Drawing...")
+    try:
+        await gemini.gemini_draw(bot, message, m)
+    finally:
+        await bot.delete_message(chat_id=message.chat.id, message_id=drawing_msg.message_id)
+
+# تابع حذف پیام راهنمای قبلی برای هر کاربر
+async def delete_last_guide_message(user_id, chat_id, bot):
+    if user_id in user_content_state and user_content_state[user_id].get('last_message_id'):
+        try:
+            await bot.delete_message(chat_id, user_content_state[user_id]['last_message_id'])
+        except Exception:
+            pass
+        # پاک کردن state قبلی
+        del user_content_state[user_id]
+
+async def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
+    await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
+    assistant_prompts = {
+        "assistant_programmer": """
+👨‍💻 من یک برنامه‌نویس حرفه‌ای هستم و می‌تونم در موارد زیر کمکتون کنم:
+• نوشتن و دیباگ کردن کد
+• طراحی معماری نرم‌افزار
+• بهینه‌سازی کد
+• آموزش برنامه‌نویسی
+• حل مشکلات فنی
+برای شروع، سوال برنامه‌نویسی خودتون رو بپرسید.
+""",
+        "assistant_designer": """
+🎨 من یک گرافیست و طراح هستم و می‌تونم در موارد زیر کمکتون کنم:
+• طراحی لوگو و برندینگ
+• طراحی رابط کاربری
+• طراحی گرافیکی
+• ویرایش تصاویر
+• ایده‌پردازی بصری
+برای شروع، پروژه طراحی خودتون رو توضیح بدید.
+""",
+        "assistant_writer": """
+📝 من یک نویسنده و محتوا‌ساز هستم و می‌تونم در موارد زیر کمکتون کنم:
+• نوشتن مقاله و محتوا
+• ویرایش و بازنویسی متن
+• ایده‌پردازی برای محتوا
+• نگارش متون تبلیغاتی
+• ترجمه و بومی‌سازی
+برای شروع، موضوع نوشتن خودتون رو مطرح کنید.
+""",
+        "assistant_teacher": """
+🎓 من یک معلم و مربی هستم و می‌تونم در موارد زیر کمکتون کنم:
+• آموزش مفاهیم درسی
+• حل مسائل ریاضی و فیزیک
+• آموزش زبان انگلیسی
+• مشاوره تحصیلی
+• تدریس خصوصی
+برای شروع، سوال درسی خودتون رو بپرسید.
+""",
+        "assistant_translator": """
+🌐 من یک مترجم و مدرس زبان هستم:
+• ترجمه متون به زبان‌های مختلف
+• رفع اشکال گرامری
+• آموزش زبان
+برای شروع، متن یا سوال زبانی خود را ارسال کنید.
+""",
+        "assistant_job": """
+💼 من مشاور شغلی و رزومه‌نویس هستم:
+• ساخت رزومه و نامه اداری
+• مشاوره شغلی و مصاحبه
+• راهنمایی مسیر شغلی
+برای شروع، سوال یا اطلاعات شغلی خود را ارسال کنید.
+""",
+        "assistant_marketing": """
+📢 من دستیار بازاریابی و تبلیغات هستم:
+• تولید متن تبلیغاتی و کمپین
+• ایده‌پردازی برای برندینگ
+• مشاوره مارکتینگ
+برای شروع، هدف یا موضوع تبلیغاتی خود را بنویسید.
+""",
+        "assistant_legal": """
+📄 من دستیار حقوقی هستم:
+• راهنمایی در نگارش قرارداد
+• پاسخ به سوالات حقوقی ساده
+برای شروع، سوال یا موضوع حقوقی خود را ارسال کنید.
+""",
+        "assistant_psychology": """
+💬 من دستیار روانشناسی و انگیزشی هستم:
+• ارائه جملات انگیزشی
+• راهنمایی مدیریت استرس
+• مشاوره انگیزشی
+برای شروع، موضوع یا سوال خود را ارسال کنید.
+""",
+        "assistant_travel": """
+✈️ من دستیار سفر و گردشگری هستم:
+• پیشنهاد مقصد سفر
+• برنامه‌ریزی سفر
+• راهنمایی گردشگری
+برای شروع، مقصد یا سوال سفر خود را بنویسید.
+""",
+        "assistant_finance": """
+💰 من دستیار مالی و حسابداری هستم:
+• راهنمایی مدیریت مالی شخصی
+• پاسخ به سوالات حسابداری
+برای شروع، سوال مالی یا حسابداری خود را ارسال کنید.
+""",
+        "assistant_health": """
+🍏 من دستیار سلامت و تغذیه هستم:
+• ارائه نکات تغذیه‌ای و ورزشی
+• پاسخ به سوالات سلامت عمومی
+برای شروع، سوال یا موضوع سلامت خود را ارسال کنید.
+""",
+        "assistant_poetry": """
+📚 من دستیار شعر و ادبیات هستم:
+• سرودن شعر و متن ادبی
+• تحلیل و بازنویسی متون ادبی
+برای شروع، موضوع یا متن ادبی خود را ارسال کنید.
+""",
+        "assistant_kids": """
+🧸 من دستیار کودک و سرگرمی هستم:
+• قصه‌گویی
+• معما و بازی فکری
+برای شروع، سن کودک و علاقه‌مندی را بنویسید.
+""",
+        "assistant_news": """
+📰 من دستیار اخبار و اطلاعات روز هستم:
+• ارائه اخبار و اطلاعات به‌روز (در صورت فعال بودن)
+برای شروع، موضوع یا حوزه خبری مورد نظر را بنویسید.
+"""
+    }
+    if call.data in assistant_prompts:
+        await bot.answer_callback_query(call.id)
+        sent = await bot.send_message(
+            call.message.chat.id,
+            escape(assistant_prompts[call.data]),
+            parse_mode="MarkdownV2"
+        )
+        user_content_state[call.from_user.id] = {'type': call.data, 'last_message_id': sent.message_id}
+
+async def handle_content_text(message: Message, bot: TeleBot) -> None:
+    user_id = message.from_user.id
+    if user_id not in user_content_state:
+        return  # اگر کاربر دسته‌ای انتخاب نکرده باشد، کاری انجام نمی‌شود
+    content_type = user_content_state[user_id]['type']
+    prompt = message.text.strip()
+    # پیام راهنما بر اساس دسته انتخابی (همه ابزارها و تولید محتوا و دستیارها)
+    content_prompts = {
+        "content_article": f"یک مقاله یا پست وبلاگ با موضوع زیر بنویس:\n{prompt}",
+        "content_caption": f"یک کپشن جذاب برای شبکه اجتماعی با موضوع زیر بنویس:\n{prompt}",
+        "content_idea": f"برای موضوع زیر چند ایده یا عنوان خلاقانه پیشنهاد بده:\n{prompt}",
+        "content_email": f"یک ایمیل یا پیام اداری مناسب با موضوع زیر بنویس:\n{prompt}",
+        "content_story": f"یک داستان کوتاه یا متن خلاقانه با موضوع زیر بنویس:\n{prompt}",
+        "content_translate": f"این متن را ترجمه کن: {prompt}",
+        "content_edit": f"این متن را ویرایش و اصلاح کن:\n{prompt}",
+        "content_resume": f"بر اساس اطلاعات زیر یک رزومه یا نامه اداری بنویس:\n{prompt}",
+        "content_shop": f"یک متن مناسب برای معرفی محصول یا سایت با موضوع زیر بنویس:\n{prompt}",
+        "content_ad": f"یک متن تبلیغاتی یا کمپین با موضوع زیر بنویس:\n{prompt}",
+        "tool_speech2text": f"لطفاً این ویس را به متن تبدیل کن (در حال حاضر فقط متن): {prompt}",
+        "tool_congrats": f"یک پیام تبریک یا مناسبتی برای این مورد بنویس: {prompt}",
+        "tool_funny": f"این متن را به طنز تبدیل کن یا یک شوخی درباره‌اش بساز: {prompt}",
+        "tool_dialogue": f"یک دیالوگ یا سناریو با موضوع زیر بنویس: {prompt}",
+        "tool_podcast": f"یک متن مناسب برای پادکست یا ویدیو با موضوع زیر بنویس: {prompt}",
+        "tool_motivation": f"یک پیام انگیزشی یا نقل‌قول الهام‌بخش برای این موضوع بنویس: {prompt}",
+        "tool_puzzle": f"یک معما یا بازی فکری مناسب با این موضوع یا سن بساز: {prompt}",
+        "tool_bio": f"یک بیوگرافی کوتاه و جذاب برای شبکه اجتماعی با این اطلاعات بنویس: {prompt}",
+        "tool_invite": f"یک متن دعوت‌نامه رسمی یا دوستانه برای این مراسم بنویس: {prompt}",
+        "tool_farewell": f"یک پیام خداحافظی یا دل‌نوشته احساسی برای این موضوع بنویس: {prompt}",
+        "tool_slogan": f"یک شعار تبلیغاتی خلاقانه برای این برند یا موضوع بنویس: {prompt}",
+        "tool_challenge": f"یک پیام دعوت به چالش یا مسابقه با این موضوع بنویس: {prompt}",
+        "tool_appintro": f"یک متن معرفی برای این اپلیکیشن یا استارتاپ بنویس: {prompt}",
+        "tool_support": f"یک پاسخ حرفه‌ای برای پشتیبانی مشتری درباره این موضوع بنویس: {prompt}",
+        "tool_guide": f"یک راهنمای گام‌به‌گام یا FAQ برای این محصول یا موضوع بنویس: {prompt}",
+        "assistant_programmer": f"به عنوان یک برنامه‌نویس حرفه‌ای، {prompt}",
+        "assistant_designer": f"به عنوان یک گرافیست و طراح، {prompt}",
+        "assistant_writer": f"به عنوان یک نویسنده و محتوا‌ساز، {prompt}",
+        "assistant_teacher": f"به عنوان یک معلم و مربی، {prompt}",
+        "assistant_translator": f"به عنوان یک مترجم و مدرس زبان، {prompt}",
+        "assistant_job": f"به عنوان یک مشاور شغلی و رزومه‌نویس، {prompt}",
+        "assistant_marketing": f"به عنوان یک دستیار بازاریابی و تبلیغات، {prompt}",
+        "assistant_legal": f"به عنوان یک دستیار حقوقی، {prompt}",
+        "assistant_psychology": f"به عنوان یک دستیار روانشناسی و انگیزشی، {prompt}",
+        "assistant_travel": f"به عنوان یک دستیار سفر و گردشگری، {prompt}",
+        "assistant_finance": f"به عنوان یک دستیار مالی و حسابداری، {prompt}",
+        "assistant_health": f"به عنوان یک دستیار سلامت و تغذیه، {prompt}",
+        "assistant_poetry": f"به عنوان یک دستیار شعر و ادبیات، {prompt}",
+        "assistant_kids": f"به عنوان یک دستیار کودک و سرگرمی، {prompt}",
+        "assistant_news": f"به عنوان یک دستیار اخبار و اطلاعات روز، {prompt}"
+    }
+    # اگر کلید وجود داشت، پرامپت را ارسال کن
+    if content_type in content_prompts:
+        await bot.send_message(message.chat.id, "⏳ در حال تولید محتوا ...", reply_markup=get_support_markup())
+        if str(user_id) not in default_model_dict:
+            default_model_dict[str(user_id)] = True
+            await gemini.gemini_stream(bot, message, content_prompts[content_type], model_1, reply_markup=get_support_markup())
+        else:
+            if default_model_dict[str(user_id)]:
+                await gemini.gemini_stream(bot, message, content_prompts[content_type], model_1, reply_markup=get_support_markup())
+            else:
+                await gemini.gemini_stream(bot, message, content_prompts[content_type], model_2, reply_markup=get_support_markup())
+        del user_content_state[user_id]
+    else:
+        # اگر کلید پیدا نشد، state را پاک کن تا کاربر سردرگم نشود
+        del user_content_state[user_id]
+
+# ثبت state هنگام انتخاب دسته‌بندی
+async def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
+    content_guides = {
+        "content_article": "📝 موضوع مقاله یا پست وبلاگ خود را وارد کنید:",
+        "content_caption": "📱 موضوع یا محصول مورد نظر برای کپشن شبکه اجتماعی را وارد کنید:",
+        "content_idea": "💡 موضوع یا زمینه‌ای که نیاز به ایده یا عنوان دارید را بنویسید:",
+        "content_email": "📧 موضوع یا متن مورد نیاز برای ایمیل یا پیام اداری را وارد کنید:",
+        "content_story": "📖 موضوع یا ژانر داستان/متن خلاقانه را وارد کنید:",
+        "content_translate": "🌐 متن مورد نظر برای ترجمه و زبان مقصد را وارد کنید (مثال: ترجمه به انگلیسی):",
+        "content_edit": "📝 متن مورد نظر برای ویرایش و اصلاح را ارسال کنید:",
+        "content_resume": "📄 اطلاعات یا سوابق خود را برای ساخت رزومه یا نامه اداری وارد کنید:",
+        "content_shop": "🛒 توضیحات محصول یا متن مورد نیاز برای سایت/فروشگاه را وارد کنید:",
+        "content_ad": "📢 موضوع یا هدف تبلیغاتی/کمپین را وارد کنید:"
+    }
+    user_id = call.from_user.id
+    if call.data == "show_content_menu":
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "لطفاً نوع محتوای متنی مورد نیاز خود را انتخاب کنید:",
+            reply_markup=get_content_menu_markup()
+        )
+    elif call.data in content_guides:
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        sent = await bot.send_message(
+            call.message.chat.id,
+            content_guides[call.data]
+        )
+        user_content_state[user_id] = {'type': call.data, 'last_message_id': sent.message_id}
+        await bot.answer_callback_query(call.id)
+    elif call.data == "back_main_menu":
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "به منوی اصلی بازگشتید.",
+            reply_markup=get_support_markup()
+        )
+
+async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
+    special_guides = {
+        "tool_speech2text": "🎤 ویس خود را ارسال کنید تا به متن تبدیل شود (در حال حاضر فقط متن را بنویسید)",
+        "tool_congrats": "🎉 مناسبت (تولد، عید، سالگرد و ...) و نام شخص را وارد کنید:",
+        "tool_funny": "😂 موضوع یا متن جدی را وارد کنید تا به طنز تبدیل شود:",
+        "tool_dialogue": "🎬 موضوع یا ژانر دیالوگ/سناریو را وارد کنید:",
+        "tool_podcast": "🎙 موضوع پادکست یا ویدیو را وارد کنید:",
+        "tool_motivation": "💪 اگر پیام انگیزشی خاصی مدنظر داری بنویس، یا فقط بنویس 'انگیزشی':",
+        "tool_puzzle": "🧩 موضوع یا سن کاربر را بنویس تا معما یا بازی فکری مناسب دریافت کنی:",
+        "tool_bio": "👤 اطلاعات یا علاقه‌مندی خود را برای تولید بیو بنویس:",
+        "tool_invite": "💌 نوع مراسم (تولد، عروسی، همایش و ...) و اطلاعات لازم را وارد کن:",
+        "tool_farewell": "💔 موضوع خداحافظی یا دل‌نوشته را وارد کن:",
+        "tool_slogan": "🚀 موضوع یا برند مورد نظر برای شعار تبلیغاتی را وارد کن:",
+        "tool_challenge": "🏆 موضوع چالش یا مسابقه را وارد کن:",
+        "tool_appintro": "📱 نام و ویژگی‌های اپلیکیشن یا استارتاپ را وارد کن:",
+        "tool_support": "🤝 موضوع یا سوال پشتیبانی مشتری را وارد کن:",
+        "tool_guide": "📖 نام محصول یا موضوع آموزشی را وارد کن تا راهنما تولید شود:"
+    }
+    user_id = call.from_user.id
+    if call.data == "show_special_tools":
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "لطفاً یکی از ابزارهای متنی ویژه را انتخاب کنید:",
+            reply_markup=get_special_tools_markup()
+        )
+    elif call.data in special_guides:
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        sent = await bot.send_message(
+            call.message.chat.id,
+            special_guides[call.data]
+        )
+        user_content_state[user_id] = {'type': call.data, 'last_message_id': sent.message_id}
+        await bot.answer_callback_query(call.id)
+    elif call.data == "back_main_menu":
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "به منوی اصلی بازگشتید.",
+            reply_markup=get_support_markup()
+        )
