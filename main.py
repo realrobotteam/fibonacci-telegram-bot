@@ -14,10 +14,9 @@ from handlers import (
     start, gemini_stream_handler, gemini_pro_stream_handler, clear, switch,
     gemini_private_handler, gemini_photo_handler, gemini_edit_handler, draw_handler,
     handle_channel_membership, handle_assistant_callback, get_assistants_markup,
-    get_content_menu_markup, handle_content_callback, handle_content_text, get_special_tools_markup, handle_special_tools_callback, handle_writer_menu
+    get_content_menu_markup, handle_content_callback, handle_content_text, get_special_tools_markup, handle_special_tools_callback
 )
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
-from auto_writer import handle_writer_callback, handle_writer_message, send_daily_content, user_writer_settings
 
 # Init args
 parser = argparse.ArgumentParser()
@@ -26,19 +25,6 @@ parser.add_argument("GOOGLE_GEMINI_KEY", help="Google Gemini API key")
 options = parser.parse_args()
 print("Arg parse done.")
 
-async def central_text_handler(message, bot):
-    from handlers import user_content_state, handle_content_text
-    from auto_writer import user_writer_settings, handle_writer_message
-    user_id = message.from_user.id
-    # اگر کاربر در حالت انتظار موضوع نویسنده خودکار است
-    if user_id in user_writer_settings and user_writer_settings[user_id].get('waiting_for_topic', False):
-        await handle_writer_message(message, bot)
-        return
-    # اگر کاربر در حالت تولید محتوا است
-    if user_id in user_content_state:
-        await handle_content_text(message, bot)
-        return
-    # در غیر این صورت هیچ کاری انجام نشود
 
 async def main():
     # Init bot
@@ -59,10 +45,10 @@ async def main():
 
     # Register content text handler (در ابتدای ثبت هندلرها)
     bot.register_message_handler(
-        central_text_handler,
+        handle_content_text,
+        func=lambda message: message.from_user.id in handlers.user_content_state,
         content_types=['text'],
-        pass_bot=True
-    )
+        pass_bot=True)
 
     # Init commands
     bot.register_message_handler(start,                         commands=['start'],         pass_bot=True)
@@ -106,28 +92,6 @@ async def main():
     @bot.callback_query_handler(func=lambda call: call.data.startswith('tool_') or call.data == 'show_special_tools')
     async def special_tools_callback_handler(call: types.CallbackQuery):
         await handle_special_tools_callback(call, bot)
-
-    @bot.callback_query_handler(func=lambda call: call.data.startswith('writer_') or call.data == 'show_writer_menu')
-    async def writer_callback_handler(call: types.CallbackQuery):
-        if call.data == 'show_writer_menu':
-            await handle_writer_menu(call, bot)
-        else:
-            await handle_writer_callback(call, bot)
-
-    def handlers_in_writer_topic_state(message):
-        user_id = message.from_user.id
-        return user_id in user_writer_settings and user_writer_settings[user_id].get('waiting_for_topic', False)
-
-    # Register writer message handler
-    bot.register_message_handler(
-        handle_writer_message,
-        func=lambda message: handlers_in_writer_topic_state(message),
-        content_types=['text'],
-        pass_bot=True
-    )
-
-    # Start daily content sender
-    asyncio.create_task(send_daily_content(bot))
 
     # Start bot
     print("Starting Gemini_Telegram_Bot.")

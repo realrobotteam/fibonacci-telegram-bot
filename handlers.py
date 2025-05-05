@@ -25,15 +25,11 @@ user_message_times = {}
 user_content_state = {}
 
 def get_welcome_markup() -> InlineKeyboardMarkup:
-    """منوی اصلی ربات"""
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("🤖 دستیارهای هوشمند", callback_data="show_assistants"),
-        types.InlineKeyboardButton("📝 تولید محتوا", callback_data="show_content_menu"),
-        types.InlineKeyboardButton("🛠️ ابزارهای ویژه", callback_data="show_special_tools"),
-        types.InlineKeyboardButton("✍️ نویسنده خودکار", callback_data="show_writer_menu"),
-        types.InlineKeyboardButton("💳 حمایت مالی", url="https://zarinp.al/707658")
-    )
+    """
+    ایجاد دکمه‌های خوش‌آمدگویی
+    """
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🚀 شروع استفاده از ربات", url="https://t.me/fibonacciaibot"))
     return markup
 
 def get_assistants_markup() -> InlineKeyboardMarkup:
@@ -400,7 +396,7 @@ async def start(message: Message, bot: TeleBot) -> None:
 
 💝 اگر از ربات راضی هستید، می‌تونید از ما حمایت کنید
 """)
-        await bot.reply_to(message, welcome_text, parse_mode="MarkdownV2", reply_markup=get_welcome_markup())
+        await bot.reply_to(message, welcome_text, parse_mode="MarkdownV2", reply_markup=get_support_markup())
     except IndexError:
         await bot.reply_to(message, error_info)
 
@@ -684,9 +680,6 @@ async def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> 
 
 async def handle_content_text(message: Message, bot: TeleBot) -> None:
     user_id = message.from_user.id
-    from auto_writer import user_writer_settings
-    if user_id in user_writer_settings and user_writer_settings[user_id].get('waiting_for_topic', False):
-        return
     if user_id not in user_content_state:
         return  # اگر کاربر دسته‌ای انتخاب نکرده باشد، کاری انجام نمی‌شود
     content_type = user_content_state[user_id]['type']
@@ -772,7 +765,7 @@ async def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> No
         await bot.send_message(
             call.message.chat.id,
             "به منوی اصلی بازگشتید.",
-            reply_markup=get_welcome_markup()
+            reply_markup=get_support_markup()
         )
 
 async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
@@ -816,17 +809,5 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
         await bot.send_message(
             call.message.chat.id,
             "به منوی اصلی بازگشتید.",
-            reply_markup=get_welcome_markup()
+            reply_markup=get_support_markup()
         )
-
-async def handle_writer_menu(call: types.CallbackQuery, bot):
-    """نمایش منوی نویسنده خودکار"""
-    from auto_writer import get_writer_menu_markup
-    await bot.edit_message_text(
-        "✍️ نویسنده خودکار\n\n"
-        "با این قابلیت می‌توانید موضوعات مورد نظر خود را تنظیم کنید و هر روز محتوای ترند و جذاب دریافت کنید.\n\n"
-        "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-        call.message.chat.id,
-        call.message.message_id,
-        reply_markup=get_writer_menu_markup()
-    )
