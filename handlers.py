@@ -684,6 +684,9 @@ async def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> 
 
 async def handle_content_text(message: Message, bot: TeleBot) -> None:
     user_id = message.from_user.id
+    from auto_writer import user_writer_settings
+    if user_id in user_writer_settings and user_writer_settings[user_id].get('waiting_for_topic', False):
+        return
     if user_id not in user_content_state:
         return  # اگر کاربر دسته‌ای انتخاب نکرده باشد، کاری انجام نمی‌شود
     content_type = user_content_state[user_id]['type']

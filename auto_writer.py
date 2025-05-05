@@ -168,13 +168,11 @@ async def handle_writer_callback(call: types.CallbackQuery, bot):
 async def handle_writer_message(message: types.Message, bot):
     """مدیریت پیام‌های دریافتی برای نویسنده خودکار"""
     user_id = message.from_user.id
-    
     if user_id in user_writer_settings and user_writer_settings[user_id].get('waiting_for_topic'):
         topic = message.text.strip()
         if topic:
             if user_id not in user_writer_settings:
                 user_writer_settings[user_id] = {'topics': [], 'active': True}
-            
             if topic not in user_writer_settings[user_id]['topics']:
                 user_writer_settings[user_id]['topics'].append(topic)
                 save_settings()
@@ -189,9 +187,10 @@ async def handle_writer_message(message: types.Message, bot):
                     "این موضوع قبلاً اضافه شده است.",
                     reply_markup=get_writer_menu_markup()
                 )
-        
         user_writer_settings[user_id]['waiting_for_topic'] = False
         save_settings()
+        # پاک کردن state تولید محتوا
+        user_content_state.pop(user_id, None)
 
 # بارگذاری تنظیمات در هنگام شروع
 user_writer_settings = load_settings() 
