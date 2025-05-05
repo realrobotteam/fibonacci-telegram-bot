@@ -62,14 +62,14 @@ async def main():
     bot.register_message_handler(gemini_photo_handler,          content_types=["photo"],    pass_bot=True)
     bot.register_message_handler(
         gemini_private_handler,
-        func=lambda message: message.chat.type == "private",
+        func=lambda message: message.chat.type == "private" and (message.from_user.id not in handlers.user_content_state or not handlers.user_content_state[message.from_user.id]['type'].startswith('assistant_')),
         content_types=['text'],
         pass_bot=True)
     
     # Register assistant text handler
     bot.register_message_handler(
         handle_assistant_text,
-        func=lambda message: message.chat.type == "private",
+        func=lambda message: message.chat.type == "private" and message.from_user.id in handlers.user_content_state and handlers.user_content_state[message.from_user.id]['type'].startswith('assistant_'),
         content_types=['text'],
         pass_bot=True)
     
