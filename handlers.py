@@ -811,3 +811,35 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
             "به منوی اصلی بازگشتید.",
             reply_markup=get_support_markup()
         )
+
+async def handle_assistant_text(message: Message, bot: TeleBot) -> None:
+    user_id = message.from_user.id
+    if user_id not in user_content_state:
+        return
+    
+    content_type = user_content_state[user_id]['type']
+    if not content_type.startswith('assistant_'):
+        return
+        
+    prompt = message.text.strip()
+    # اضافه کردن پیشوند مناسب برای هر دستیار
+    assistant_prefixes = {
+        "assistant_programmer": "به عنوان یک برنامه‌نویس حرفه‌ای، ",
+        "assistant_designer": "به عنوان یک گرافیست و طراح، ",
+        "assistant_writer": "به عنوان یک نویسنده و محتوا‌ساز، ",
+        "assistant_teacher": "به عنوان یک معلم و مربی، ",
+        "assistant_translator": "به عنوان یک مترجم و مدرس زبان، ",
+        "assistant_job": "به عنوان یک مشاور شغلی و رزومه‌نویس، ",
+        "assistant_marketing": "به عنوان یک دستیار بازاریابی و تبلیغات، ",
+        "assistant_legal": "به عنوان یک دستیار حقوقی، ",
+        "assistant_psychology": "به عنوان یک دستیار روانشناسی و انگیزشی، ",
+        "assistant_travel": "به عنوان یک دستیار سفر و گردشگری، ",
+        "assistant_finance": "به عنوان یک دستیار مالی و حسابداری، ",
+        "assistant_health": "به عنوان یک دستیار سلامت و تغذیه، ",
+        "assistant_poetry": "به عنوان یک دستیار شعر و ادبیات، ",
+        "assistant_kids": "به عنوان یک دستیار کودک و سرگرمی، ",
+        "assistant_news": "به عنوان یک دستیار اخبار و اطلاعات روز، "
+    }
+    
+    full_prompt = assistant_prefixes.get(content_type, "") + prompt
+    await gemini.gemini_stream(bot, message, full_prompt, model_1)

@@ -14,7 +14,8 @@ from handlers import (
     start, gemini_stream_handler, gemini_pro_stream_handler, clear, switch,
     gemini_private_handler, gemini_photo_handler, gemini_edit_handler, draw_handler,
     handle_channel_membership, handle_assistant_callback, get_assistants_markup,
-    get_content_menu_markup, handle_content_callback, handle_content_text, get_special_tools_markup, handle_special_tools_callback
+    get_content_menu_markup, handle_content_callback, handle_content_text, get_special_tools_markup, handle_special_tools_callback,
+    handle_assistant_text
 )
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
 
@@ -61,6 +62,13 @@ async def main():
     bot.register_message_handler(gemini_photo_handler,          content_types=["photo"],    pass_bot=True)
     bot.register_message_handler(
         gemini_private_handler,
+        func=lambda message: message.chat.type == "private",
+        content_types=['text'],
+        pass_bot=True)
+    
+    # Register assistant text handler
+    bot.register_message_handler(
+        handle_assistant_text,
         func=lambda message: message.chat.type == "private",
         content_types=['text'],
         pass_bot=True)
