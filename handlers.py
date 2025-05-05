@@ -21,6 +21,7 @@ gemini_draw_dict        = gemini.gemini_draw_dict
 user_message_times = {}
 
 # دیکشنری برای ذخیره state تولید محتوا برای هر کاربر
+# مقدار: {'type': نوع دسته, 'last_message_id': آیدی پیام راهنما}
 user_content_state = {}
 
 def get_welcome_markup() -> InlineKeyboardMarkup:
@@ -549,7 +550,7 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
     user_id = message.from_user.id
     if user_id not in user_content_state:
         return  # اگر کاربر دسته‌ای انتخاب نکرده باشد، کاری انجام نمی‌شود
-    content_type = user_content_state[user_id]
+    content_type = user_content_state[user_id]['type']
     prompt = message.text.strip()
     # پیام راهنما بر اساس دسته انتخابی
     content_prompts = {
@@ -602,22 +603,17 @@ async def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> No
         )
     elif call.data in content_guides:
         # اگر state قبلی وجود داشت، پیام قبلی را حذف کن
-        if user_id in user_content_state and hasattr(user_content_state[user_id], 'last_message_id'):
+        if user_id in user_content_state and user_content_state[user_id].get('last_message_id'):
             try:
-                await bot.delete_message(call.message.chat.id, user_content_state[user_id].last_message_id)
+                await bot.delete_message(call.message.chat.id, user_content_state[user_id]['last_message_id'])
             except Exception:
                 pass
-        user_content_state[user_id] = call.data
         sent = await bot.send_message(
             call.message.chat.id,
             content_guides[call.data]
         )
-        # ذخیره آیدی پیام راهنما برای حذف بعدی
-        class StateObj(str):
-            pass
-        state_obj = StateObj(call.data)
-        state_obj.last_message_id = sent.message_id
-        user_content_state[user_id] = state_obj
+        # ذخیره نوع دسته و آیدی پیام راهنما
+        user_content_state[user_id] = {'type': call.data, 'last_message_id': sent.message_id}
         await bot.answer_callback_query(call.id)
     elif call.data == "back_main_menu":
         await bot.answer_callback_query(call.id)
