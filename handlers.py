@@ -112,7 +112,46 @@ def get_support_markup() -> InlineKeyboardMarkup:
     )
     markup.add(
         InlineKeyboardButton("🤖 دستیارهای هوشمند", callback_data="show_assistants"),
-        InlineKeyboardButton("📝 تولید محتوای متنی", callback_data="show_content_menu")
+        InlineKeyboardButton("📝 تولید محتوای متنی", callback_data="show_content_menu"),
+        InlineKeyboardButton("🛠 ابزارهای متنی ویژه", callback_data="show_special_tools")
+    )
+    return markup
+
+def get_special_tools_markup() -> InlineKeyboardMarkup:
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("🎤 تبدیل ویس به متن", callback_data="tool_speech2text"),
+        InlineKeyboardButton("🎉 پیام تبریک و مناسبتی", callback_data="tool_congrats")
+    )
+    markup.add(
+        InlineKeyboardButton("😂 متن طنز و شوخی", callback_data="tool_funny"),
+        InlineKeyboardButton("🎬 دیالوگ و سناریو", callback_data="tool_dialogue")
+    )
+    markup.add(
+        InlineKeyboardButton("🎙 متن پادکست/ویدیو", callback_data="tool_podcast")
+    )
+    markup.add(
+        InlineKeyboardButton("💪 پیام انگیزشی روزانه", callback_data="tool_motivation"),
+        InlineKeyboardButton("🧩 معما و بازی فکری", callback_data="tool_puzzle")
+    )
+    markup.add(
+        InlineKeyboardButton("👤 بیو شبکه اجتماعی", callback_data="tool_bio"),
+        InlineKeyboardButton("💌 کارت دعوت و مراسم", callback_data="tool_invite")
+    )
+    markup.add(
+        InlineKeyboardButton("💔 خداحافظی و دل‌نوشته", callback_data="tool_farewell"),
+        InlineKeyboardButton("🚀 شعار تبلیغاتی", callback_data="tool_slogan")
+    )
+    markup.add(
+        InlineKeyboardButton("🏆 پیام چالش و مسابقه", callback_data="tool_challenge"),
+        InlineKeyboardButton("📱 معرفی اپ/استارتاپ", callback_data="tool_appintro")
+    )
+    markup.add(
+        InlineKeyboardButton("🤝 پشتیبانی و پاسخ مشتری", callback_data="tool_support"),
+        InlineKeyboardButton("📖 راهنمای محصول/آموزش", callback_data="tool_guide")
+    )
+    markup.add(
+        InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu")
     )
     return markup
 
@@ -656,11 +695,25 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
         "content_edit": f"این متن را ویرایش و اصلاح کن:\n{prompt}",
         "content_resume": f"بر اساس اطلاعات زیر یک رزومه یا نامه اداری بنویس:\n{prompt}",
         "content_shop": f"یک متن مناسب برای معرفی محصول یا سایت با موضوع زیر بنویس:\n{prompt}",
-        "content_ad": f"یک متن تبلیغاتی یا کمپین با موضوع زیر بنویس:\n{prompt}"
+        "content_ad": f"یک متن تبلیغاتی یا کمپین با موضوع زیر بنویس:\n{prompt}",
+        "tool_speech2text": f"لطفاً این ویس را به متن تبدیل کن (در حال حاضر فقط متن): {prompt}",
+        "tool_congrats": f"یک پیام تبریک یا مناسبتی برای این مورد بنویس: {prompt}",
+        "tool_funny": f"این متن را به طنز تبدیل کن یا یک شوخی درباره‌اش بساز: {prompt}",
+        "tool_dialogue": f"یک دیالوگ یا سناریو با موضوع زیر بنویس: {prompt}",
+        "tool_podcast": f"یک متن مناسب برای پادکست یا ویدیو با موضوع زیر بنویس: {prompt}",
+        "tool_motivation": f"یک پیام انگیزشی یا نقل‌قول الهام‌بخش برای این موضوع بنویس: {prompt}",
+        "tool_puzzle": f"یک معما یا بازی فکری مناسب با این موضوع یا سن بساز: {prompt}",
+        "tool_bio": f"یک بیوگرافی کوتاه و جذاب برای شبکه اجتماعی با این اطلاعات بنویس: {prompt}",
+        "tool_invite": f"یک متن دعوت‌نامه رسمی یا دوستانه برای این مراسم بنویس: {prompt}",
+        "tool_farewell": f"یک پیام خداحافظی یا دل‌نوشته احساسی برای این موضوع بنویس: {prompt}",
+        "tool_slogan": f"یک شعار تبلیغاتی خلاقانه برای این برند یا موضوع بنویس: {prompt}",
+        "tool_challenge": f"یک پیام دعوت به چالش یا مسابقه با این موضوع بنویس: {prompt}",
+        "tool_appintro": f"یک متن معرفی برای این اپلیکیشن یا استارتاپ بنویس: {prompt}",
+        "tool_support": f"یک پاسخ حرفه‌ای برای پشتیبانی مشتری درباره این موضوع بنویس: {prompt}",
+        "tool_guide": f"یک راهنمای گام‌به‌گام یا FAQ برای این محصول یا موضوع بنویس: {prompt}"
     }
     if content_type in content_prompts:
         await bot.send_message(message.chat.id, "⏳ در حال تولید محتوا ...")
-        # ارسال پرامپت به مدل (مثلاً مدل Gemini)
         if str(user_id) not in default_model_dict:
             default_model_dict[str(user_id)] = True
             await gemini.gemini_stream(bot, message, content_prompts[content_type], model_1)
@@ -669,7 +722,6 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
                 await gemini.gemini_stream(bot, message, content_prompts[content_type], model_1)
             else:
                 await gemini.gemini_stream(bot, message, content_prompts[content_type], model_2)
-        # پاک کردن state پس از تولید محتوا
         del user_content_state[user_id]
 
 # ثبت state هنگام انتخاب دسته‌بندی
@@ -700,6 +752,50 @@ async def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> No
         sent = await bot.send_message(
             call.message.chat.id,
             content_guides[call.data]
+        )
+        user_content_state[user_id] = {'type': call.data, 'last_message_id': sent.message_id}
+        await bot.answer_callback_query(call.id)
+    elif call.data == "back_main_menu":
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "به منوی اصلی بازگشتید.",
+            reply_markup=get_support_markup()
+        )
+
+async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
+    special_guides = {
+        "tool_speech2text": "🎤 ویس خود را ارسال کنید تا به متن تبدیل شود (در حال حاضر فقط متن را بنویسید)",
+        "tool_congrats": "🎉 مناسبت (تولد، عید، سالگرد و ...) و نام شخص را وارد کنید:",
+        "tool_funny": "😂 موضوع یا متن جدی را وارد کنید تا به طنز تبدیل شود:",
+        "tool_dialogue": "🎬 موضوع یا ژانر دیالوگ/سناریو را وارد کنید:",
+        "tool_podcast": "🎙 موضوع پادکست یا ویدیو را وارد کنید:",
+        "tool_motivation": "💪 اگر پیام انگیزشی خاصی مدنظر داری بنویس، یا فقط بنویس 'انگیزشی':",
+        "tool_puzzle": "🧩 موضوع یا سن کاربر را بنویس تا معما یا بازی فکری مناسب دریافت کنی:",
+        "tool_bio": "👤 اطلاعات یا علاقه‌مندی خود را برای تولید بیو بنویس:",
+        "tool_invite": "💌 نوع مراسم (تولد، عروسی، همایش و ...) و اطلاعات لازم را وارد کن:",
+        "tool_farewell": "💔 موضوع خداحافظی یا دل‌نوشته را وارد کن:",
+        "tool_slogan": "🚀 موضوع یا برند مورد نظر برای شعار تبلیغاتی را وارد کن:",
+        "tool_challenge": "🏆 موضوع چالش یا مسابقه را وارد کن:",
+        "tool_appintro": "📱 نام و ویژگی‌های اپلیکیشن یا استارتاپ را وارد کن:",
+        "tool_support": "🤝 موضوع یا سوال پشتیبانی مشتری را وارد کن:",
+        "tool_guide": "📖 نام محصول یا موضوع آموزشی را وارد کن تا راهنما تولید شود:"
+    }
+    user_id = call.from_user.id
+    if call.data == "show_special_tools":
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "لطفاً یکی از ابزارهای متنی ویژه را انتخاب کنید:",
+            reply_markup=get_special_tools_markup()
+        )
+    elif call.data in special_guides:
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        sent = await bot.send_message(
+            call.message.chat.id,
+            special_guides[call.data]
         )
         user_content_state[user_id] = {'type': call.data, 'last_message_id': sent.message_id}
         await bot.answer_callback_query(call.id)
