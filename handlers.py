@@ -487,10 +487,18 @@ async def draw_handler(message: Message, bot: TeleBot) -> None:
     finally:
         await bot.delete_message(chat_id=message.chat.id, message_id=drawing_msg.message_id)
 
+# تابع حذف پیام راهنمای قبلی برای هر کاربر
+async def delete_last_guide_message(user_id, chat_id, bot):
+    if user_id in user_content_state and user_content_state[user_id].get('last_message_id'):
+        try:
+            await bot.delete_message(chat_id, user_content_state[user_id]['last_message_id'])
+        except Exception:
+            pass
+        # پاک کردن state قبلی
+        del user_content_state[user_id]
+
 async def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
-    """
-    هندلر کلیک روی دکمه‌های دستیار
-    """
+    await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
     assistant_prompts = {
         "assistant_programmer": """
 👨‍💻 من یک برنامه‌نویس حرفه‌ای هستم و می‌تونم در موارد زیر کمکتون کنم:
@@ -540,11 +548,13 @@ async def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> 
     
     if call.data in assistant_prompts:
         await bot.answer_callback_query(call.id)
-        await bot.send_message(
+        sent = await bot.send_message(
             call.message.chat.id,
             escape(assistant_prompts[call.data]),
             parse_mode="MarkdownV2"
         )
+        # ذخیره آیدی پیام راهنما برای حذف بعدی
+        user_content_state[call.from_user.id] = {'type': call.data, 'last_message_id': sent.message_id}
 
 async def handle_content_text(message: Message, bot: TeleBot) -> None:
     user_id = message.from_user.id
@@ -595,6 +605,7 @@ async def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> No
     }
     user_id = call.from_user.id
     if call.data == "show_content_menu":
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
         await bot.answer_callback_query(call.id)
         await bot.send_message(
             call.message.chat.id,
@@ -602,20 +613,15 @@ async def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> No
             reply_markup=get_content_menu_markup()
         )
     elif call.data in content_guides:
-        # اگر state قبلی وجود داشت، پیام قبلی را حذف کن
-        if user_id in user_content_state and user_content_state[user_id].get('last_message_id'):
-            try:
-                await bot.delete_message(call.message.chat.id, user_content_state[user_id]['last_message_id'])
-            except Exception:
-                pass
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
         sent = await bot.send_message(
             call.message.chat.id,
             content_guides[call.data]
         )
-        # ذخیره نوع دسته و آیدی پیام راهنما
         user_content_state[user_id] = {'type': call.data, 'last_message_id': sent.message_id}
         await bot.answer_callback_query(call.id)
     elif call.data == "back_main_menu":
+        await delete_last_guide_message(user_id, call.message.chat.id, bot)
         await bot.answer_callback_query(call.id)
         await bot.send_message(
             call.message.chat.id,
