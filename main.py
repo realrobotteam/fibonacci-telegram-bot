@@ -9,6 +9,7 @@ from telebot.asyncio_storage import StateMemoryStorage
 from telebot import types
 import os
 from config import conf, generation_config, safety_settings
+import handlers
 from handlers import (
     start, gemini_stream_handler, gemini_pro_stream_handler, clear, switch,
     gemini_private_handler, gemini_photo_handler, gemini_edit_handler, draw_handler,
