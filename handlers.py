@@ -400,7 +400,7 @@ async def start(message: Message, bot: TeleBot) -> None:
 
 💝 اگر از ربات راضی هستید، می‌تونید از ما حمایت کنید
 """)
-        await bot.reply_to(message, welcome_text, parse_mode="MarkdownV2", reply_markup=get_support_markup())
+        await bot.reply_to(message, welcome_text, parse_mode="MarkdownV2", reply_markup=get_welcome_markup())
     except IndexError:
         await bot.reply_to(message, error_info)
 
@@ -769,7 +769,7 @@ async def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> No
         await bot.send_message(
             call.message.chat.id,
             "به منوی اصلی بازگشتید.",
-            reply_markup=get_support_markup()
+            reply_markup=get_welcome_markup()
         )
 
 async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
@@ -813,7 +813,7 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
         await bot.send_message(
             call.message.chat.id,
             "به منوی اصلی بازگشتید.",
-            reply_markup=get_support_markup()
+            reply_markup=get_welcome_markup()
         )
 
 async def handle_writer_menu(call: types.CallbackQuery, bot):
