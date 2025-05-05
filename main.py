@@ -42,6 +42,13 @@ async def main():
 )
     print("Bot init done.")
 
+    # Register content text handler (در ابتدای ثبت هندلرها)
+    bot.register_message_handler(
+        handle_content_text,
+        func=lambda message: message.from_user.id in handlers.user_content_state,
+        content_types=['text'],
+        pass_bot=True)
+
     # Init commands
     bot.register_message_handler(start,                         commands=['start'],         pass_bot=True)
     bot.register_message_handler(gemini_stream_handler,         commands=['gemini'],        pass_bot=True)
@@ -84,13 +91,6 @@ async def main():
     @bot.callback_query_handler(func=lambda call: call.data.startswith('tool_') or call.data == 'show_special_tools')
     async def special_tools_callback_handler(call: types.CallbackQuery):
         await handle_special_tools_callback(call, bot)
-
-    # Register content text handler
-    bot.register_message_handler(
-        handle_content_text,
-        func=lambda message: message.from_user.id in handlers.user_content_state,
-        content_types=['text'],
-        pass_bot=True)
 
     # Start bot
     print("Starting Gemini_Telegram_Bot.")
