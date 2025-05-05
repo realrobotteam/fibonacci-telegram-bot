@@ -26,11 +26,10 @@ parser.add_argument("GOOGLE_GEMINI_KEY", help="Google Gemini API key")
 options = parser.parse_args()
 print("Arg parse done.")
 
-async def central_text_handler(message):
+async def central_text_handler(message, bot):
     from handlers import user_content_state, handle_content_text
     from auto_writer import user_writer_settings, handle_writer_message
     user_id = message.from_user.id
-    bot = message.bot
     # اگر کاربر در حالت انتظار موضوع نویسنده خودکار است
     if user_id in user_writer_settings and user_writer_settings[user_id].get('waiting_for_topic', False):
         await handle_writer_message(message, bot)
