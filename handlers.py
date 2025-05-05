@@ -827,32 +827,3 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
             "به منوی اصلی بازگشتید.",
             reply_markup=get_support_markup()
         )
-
-@handlers.bot.callback_query_handler(func=lambda call: call.data in [
-    'like', 'dislike', 'regenerate', 'edit', 'copy', 'new_question', 'main_menu'])
-async def user_reply_buttons_handler(call: CallbackQuery):
-    if call.data == 'like':
-        await call.answer("خوشحالیم که راضی بودید! 😊", show_alert=True)
-    elif call.data == 'dislike':
-        await call.answer("متاسفیم که راضی نبودید. لطفاً بازخورد خود را ارسال کنید.", show_alert=True)
-    elif call.data == 'regenerate':
-        await call.answer("در حال تولید مجدد پاسخ...", show_alert=True)
-        # اگر state کاربر موجود بود، همان پرامپت را دوباره ارسال کن
-        user_id = call.from_user.id
-        if user_id in user_content_state:
-            content_type = user_content_state[user_id]['type']
-            last_prompt = user_content_state[user_id].get('last_prompt', None)
-            if last_prompt:
-                from main import bot as main_bot
-                await main_bot.send_message(call.message.chat.id, "⏳ در حال تولید مجدد محتوا ...")
-                await gemini.gemini_stream(main_bot, call.message, last_prompt, model_1)
-    elif call.data == 'edit':
-        await call.answer("لطفاً متن جدید خود را ارسال کنید.", show_alert=True)
-        # می‌توانید کاربر را به حالت ویرایش ببرید (در صورت نیاز)
-    elif call.data == 'copy':
-        await call.answer("برای کپی متن، روی پیام کلیک کنید و گزینه کپی را انتخاب کنید.", show_alert=True)
-    elif call.data == 'new_question':
-        await call.answer("سوال جدید خود را ارسال کنید.", show_alert=True)
-    elif call.data == 'main_menu':
-        await call.answer("بازگشت به منوی اصلی.", show_alert=True)
-        await call.message.answer("به منوی اصلی بازگشتید.", reply_markup=get_support_markup())
