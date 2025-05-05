@@ -25,7 +25,7 @@ search_tool = {'google_search': {}}
 
 client = genai.Client(api_key=sys.argv[2])
 
-async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str):
+async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str, reply_markup=None):
     sent_message = None
     try:
         sent_message = await bot.reply_to(message, "🤖 Generating answers...")
@@ -61,14 +61,14 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str):
                             chat_id=sent_message.chat.id,
                             message_id=sent_message.message_id,
                             parse_mode="MarkdownV2"
-                            )
+                        )
                     except Exception as e:
                         if "parse markdown" in str(e).lower():
                             await bot.edit_message_text(
                                 full_response,
                                 chat_id=sent_message.chat.id,
                                 message_id=sent_message.message_id
-                                )
+                            )
                         else:
                             if "message is not modified" not in str(e).lower():
                                 print(f"Error updating message: {e}")
@@ -79,7 +79,8 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str):
                 escape(full_response),
                 chat_id=sent_message.chat.id,
                 message_id=sent_message.message_id,
-                parse_mode="MarkdownV2"
+                parse_mode="MarkdownV2",
+                reply_markup=reply_markup
             )
         except Exception as e:
             try:
@@ -87,7 +88,8 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str):
                     await bot.edit_message_text(
                         full_response,
                         chat_id=sent_message.chat.id,
-                        message_id=sent_message.message_id
+                        message_id=sent_message.message_id,
+                        reply_markup=reply_markup
                     )
             except Exception:
                 traceback.print_exc()
@@ -99,10 +101,11 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str):
             await bot.edit_message_text(
                 f"{error_info}\nError details: {str(e)}",
                 chat_id=sent_message.chat.id,
-                message_id=sent_message.message_id
+                message_id=sent_message.message_id,
+                reply_markup=reply_markup
             )
         else:
-            await bot.reply_to(message, f"{error_info}\nError details: {str(e)}")
+            await bot.reply_to(message, f"{error_info}\nError details: {str(e)}", reply_markup=reply_markup)
 
 async def gemini_edit(bot: TeleBot, message: Message, m: str, photo_file: bytes):
 
