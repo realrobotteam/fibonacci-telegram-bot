@@ -97,29 +97,29 @@ async def main():
 
     @bot.callback_query_handler(func=lambda call: call.data in [
         'like', 'dislike', 'regenerate', 'edit', 'copy', 'new_question', 'main_menu'])
-    def user_reply_buttons_handler(call):
+    async def user_reply_buttons_handler(call):
         if call.data == 'like':
-            bot.answer_callback_query(call.id, "خوشحالیم که راضی بودید! 😊", show_alert=True)
+            await call.answer("خوشحالیم که راضی بودید! 😊", show_alert=True)
         elif call.data == 'dislike':
-            bot.answer_callback_query(call.id, "متاسفیم که راضی نبودید. لطفاً بازخورد خود را ارسال کنید.", show_alert=True)
+            await call.answer("متاسفیم که راضی نبودید. لطفاً بازخورد خود را ارسال کنید.", show_alert=True)
         elif call.data == 'regenerate':
-            bot.answer_callback_query(call.id, "در حال تولید مجدد پاسخ...", show_alert=True)
+            await call.answer("در حال تولید مجدد پاسخ...", show_alert=True)
             user_id = call.from_user.id
             if user_id in user_content_state:
                 content_type = user_content_state[user_id]['type']
                 last_prompt = user_content_state[user_id].get('last_prompt', None)
                 if last_prompt:
-                    bot.send_message(call.message.chat.id, "⏳ در حال تولید مجدد محتوا ...")
-                    asyncio.create_task(gemini.gemini_stream(bot, call.message, last_prompt, model_1))
+                    await bot.send_message(call.message.chat.id, "⏳ در حال تولید مجدد محتوا ...")
+                    await gemini.gemini_stream(bot, call.message, last_prompt, model_1)
         elif call.data == 'edit':
-            bot.answer_callback_query(call.id, "لطفاً متن جدید خود را ارسال کنید.", show_alert=True)
+            await call.answer("لطفاً متن جدید خود را ارسال کنید.", show_alert=True)
         elif call.data == 'copy':
-            bot.answer_callback_query(call.id, "برای کپی متن، روی پیام کلیک کنید و گزینه کپی را انتخاب کنید.", show_alert=True)
+            await call.answer("برای کپی متن، روی پیام کلیک کنید و گزینه کپی را انتخاب کنید.", show_alert=True)
         elif call.data == 'new_question':
-            bot.answer_callback_query(call.id, "سوال جدید خود را ارسال کنید.", show_alert=True)
+            await call.answer("سوال جدید خود را ارسال کنید.", show_alert=True)
         elif call.data == 'main_menu':
-            bot.answer_callback_query(call.id, "بازگشت به منوی اصلی.", show_alert=True)
-            bot.send_message(call.message.chat.id, "به منوی اصلی بازگشتید.", reply_markup=get_support_markup())
+            await call.answer("بازگشت به منوی اصلی.", show_alert=True)
+            await bot.send_message(call.message.chat.id, "به منوی اصلی بازگشتید.", reply_markup=get_support_markup())
 
     # Start bot
     print("Starting Gemini_Telegram_Bot.")
