@@ -1,3 +1,4 @@
+import os
 from google.genai import types
 
 # تنظیمات کانال
@@ -12,6 +13,7 @@ conf = {
     "model_2":              "gemini-2.5-pro-exp-03-25",
     "model_3":              "gemini-2.0-flash-exp",#for draw
     "streaming_update_interval": 0.5,  # Streaming answer update interval (seconds)
+    "GOOGLE_GEMINI_KEY": os.environ.get("GOOGLE_GEMINI_KEY", "your-gemini-api-key-here")
 }
 
 safety_settings = [
