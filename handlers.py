@@ -684,7 +684,7 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
         return  # اگر کاربر دسته‌ای انتخاب نکرده باشد، کاری انجام نمی‌شود
     content_type = user_content_state[user_id]['type']
     prompt = message.text.strip()
-    # پیام راهنما بر اساس دسته انتخابی
+    # پیام راهنما بر اساس دسته انتخابی (همه ابزارها و تولید محتوا)
     content_prompts = {
         "content_article": f"یک مقاله یا پست وبلاگ با موضوع زیر بنویس:\n{prompt}",
         "content_caption": f"یک کپشن جذاب برای شبکه اجتماعی با موضوع زیر بنویس:\n{prompt}",
@@ -712,6 +712,7 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
         "tool_support": f"یک پاسخ حرفه‌ای برای پشتیبانی مشتری درباره این موضوع بنویس: {prompt}",
         "tool_guide": f"یک راهنمای گام‌به‌گام یا FAQ برای این محصول یا موضوع بنویس: {prompt}"
     }
+    # اگر کلید وجود داشت، پرامپت را ارسال کن
     if content_type in content_prompts:
         await bot.send_message(message.chat.id, "⏳ در حال تولید محتوا ...")
         if str(user_id) not in default_model_dict:
@@ -722,6 +723,9 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
                 await gemini.gemini_stream(bot, message, content_prompts[content_type], model_1)
             else:
                 await gemini.gemini_stream(bot, message, content_prompts[content_type], model_2)
+        del user_content_state[user_id]
+    else:
+        # اگر کلید پیدا نشد، state را پاک کن تا کاربر سردرگم نشود
         del user_content_state[user_id]
 
 # ثبت state هنگام انتخاب دسته‌بندی
