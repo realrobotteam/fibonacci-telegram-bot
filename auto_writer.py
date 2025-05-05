@@ -5,7 +5,7 @@ import os
 from telebot import types
 from config import conf
 import google.generativeai as genai
-from handlers import escape
+from handlers import escape, user_content_state
 
 # تنظیمات Gemini
 genai.configure(api_key=conf['GOOGLE_GEMINI_KEY'])
@@ -103,8 +103,8 @@ async def send_daily_content(bot):
 async def handle_writer_callback(call: types.CallbackQuery, bot):
     """مدیریت callback های منوی نویسنده خودکار"""
     user_id = call.from_user.id
-    
     if call.data == "writer_new_topic":
+        user_content_state.pop(user_id, None)
         await bot.send_message(
             call.message.chat.id,
             "لطفاً موضوع مورد نظر خود را وارد کنید:",
