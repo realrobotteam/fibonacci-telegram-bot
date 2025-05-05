@@ -20,6 +20,9 @@ gemini_draw_dict        = gemini.gemini_draw_dict
 
 user_message_times = {}
 
+# دیکشنری برای ذخیره state تولید محتوا برای هر کاربر
+user_content_state = {}
+
 def get_welcome_markup() -> InlineKeyboardMarkup:
     """
     ایجاد دکمه‌های خوش‌آمدگویی
@@ -43,6 +46,33 @@ def get_assistants_markup() -> InlineKeyboardMarkup:
     )
     return markup
 
+def get_content_menu_markup() -> InlineKeyboardMarkup:
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("✍️ مقاله و پست وبلاگ", callback_data="content_article"),
+        InlineKeyboardButton("📱 کپشن و شبکه اجتماعی", callback_data="content_caption")
+    )
+    markup.add(
+        InlineKeyboardButton("💡 ایده‌پردازی و عنوان‌سازی", callback_data="content_idea"),
+        InlineKeyboardButton("📧 ایمیل و پیام اداری", callback_data="content_email")
+    )
+    markup.add(
+        InlineKeyboardButton("📖 داستان و متن خلاقانه", callback_data="content_story"),
+        InlineKeyboardButton("🌐 ترجمه و بومی‌سازی", callback_data="content_translate")
+    )
+    markup.add(
+        InlineKeyboardButton("📝 ویرایش و اصلاح متن", callback_data="content_edit"),
+        InlineKeyboardButton("📄 رزومه و نامه اداری", callback_data="content_resume")
+    )
+    markup.add(
+        InlineKeyboardButton("🛒 متن سایت و فروشگاه", callback_data="content_shop"),
+        InlineKeyboardButton("📢 تبلیغات و کمپین", callback_data="content_ad")
+    )
+    markup.add(
+        InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu")
+    )
+    return markup
+
 def get_support_markup() -> InlineKeyboardMarkup:
     """
     ایجاد دکمه‌های حمایت مالی
@@ -57,7 +87,8 @@ def get_support_markup() -> InlineKeyboardMarkup:
         InlineKeyboardButton("📚 وبلاگ آموزشی", url="https://fibonacci.monster/blog/")
     )
     markup.add(
-        InlineKeyboardButton("🤖 دستیارهای هوشمند", callback_data="show_assistants")
+        InlineKeyboardButton("🤖 دستیارهای هوشمند", callback_data="show_assistants"),
+        InlineKeyboardButton("📝 تولید محتوای متنی", callback_data="show_content_menu")
     )
     return markup
 
@@ -512,4 +543,74 @@ async def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> 
             call.message.chat.id,
             escape(assistant_prompts[call.data]),
             parse_mode="MarkdownV2"
+        )
+
+async def handle_content_text(message: Message, bot: TeleBot) -> None:
+    user_id = message.from_user.id
+    if user_id not in user_content_state:
+        return  # اگر کاربر دسته‌ای انتخاب نکرده باشد، کاری انجام نمی‌شود
+    content_type = user_content_state[user_id]
+    prompt = message.text.strip()
+    # پیام راهنما بر اساس دسته انتخابی
+    content_prompts = {
+        "content_article": f"یک مقاله یا پست وبلاگ با موضوع زیر بنویس:\n{prompt}",
+        "content_caption": f"یک کپشن جذاب برای شبکه اجتماعی با موضوع زیر بنویس:\n{prompt}",
+        "content_idea": f"برای موضوع زیر چند ایده یا عنوان خلاقانه پیشنهاد بده:\n{prompt}",
+        "content_email": f"یک ایمیل یا پیام اداری مناسب با موضوع زیر بنویس:\n{prompt}",
+        "content_story": f"یک داستان کوتاه یا متن خلاقانه با موضوع زیر بنویس:\n{prompt}",
+        "content_translate": f"این متن را ترجمه کن: {prompt}",
+        "content_edit": f"این متن را ویرایش و اصلاح کن:\n{prompt}",
+        "content_resume": f"بر اساس اطلاعات زیر یک رزومه یا نامه اداری بنویس:\n{prompt}",
+        "content_shop": f"یک متن مناسب برای معرفی محصول یا سایت با موضوع زیر بنویس:\n{prompt}",
+        "content_ad": f"یک متن تبلیغاتی یا کمپین با موضوع زیر بنویس:\n{prompt}"
+    }
+    if content_type in content_prompts:
+        await bot.send_message(message.chat.id, "⏳ در حال تولید محتوا ...")
+        # ارسال پرامپت به مدل (مثلاً مدل Gemini)
+        if str(user_id) not in default_model_dict:
+            default_model_dict[str(user_id)] = True
+            await gemini.gemini_stream(bot, message, content_prompts[content_type], model_1)
+        else:
+            if default_model_dict[str(user_id)]:
+                await gemini.gemini_stream(bot, message, content_prompts[content_type], model_1)
+            else:
+                await gemini.gemini_stream(bot, message, content_prompts[content_type], model_2)
+        # پاک کردن state پس از تولید محتوا
+        del user_content_state[user_id]
+
+# ثبت state هنگام انتخاب دسته‌بندی
+async def handle_content_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
+    content_guides = {
+        "content_article": "📝 موضوع مقاله یا پست وبلاگ خود را وارد کنید:",
+        "content_caption": "📱 موضوع یا محصول مورد نظر برای کپشن شبکه اجتماعی را وارد کنید:",
+        "content_idea": "💡 موضوع یا زمینه‌ای که نیاز به ایده یا عنوان دارید را بنویسید:",
+        "content_email": "📧 موضوع یا متن مورد نیاز برای ایمیل یا پیام اداری را وارد کنید:",
+        "content_story": "📖 موضوع یا ژانر داستان/متن خلاقانه را وارد کنید:",
+        "content_translate": "🌐 متن مورد نظر برای ترجمه و زبان مقصد را وارد کنید (مثال: ترجمه به انگلیسی):",
+        "content_edit": "📝 متن مورد نظر برای ویرایش و اصلاح را ارسال کنید:",
+        "content_resume": "📄 اطلاعات یا سوابق خود را برای ساخت رزومه یا نامه اداری وارد کنید:",
+        "content_shop": "🛒 توضیحات محصول یا متن مورد نیاز برای سایت/فروشگاه را وارد کنید:",
+        "content_ad": "📢 موضوع یا هدف تبلیغاتی/کمپین را وارد کنید:"
+    }
+    user_id = call.from_user.id
+    if call.data == "show_content_menu":
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "لطفاً نوع محتوای متنی مورد نیاز خود را انتخاب کنید:",
+            reply_markup=get_content_menu_markup()
+        )
+    elif call.data in content_guides:
+        user_content_state[user_id] = call.data
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            content_guides[call.data]
+        )
+    elif call.data == "back_main_menu":
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "به منوی اصلی بازگشتید.",
+            reply_markup=get_support_markup()
         )

@@ -12,7 +12,8 @@ from config import conf, generation_config, safety_settings
 from handlers import (
     start, gemini_stream_handler, gemini_pro_stream_handler, clear, switch,
     gemini_private_handler, gemini_photo_handler, gemini_edit_handler, draw_handler,
-    handle_channel_membership, handle_assistant_callback, get_assistants_markup
+    handle_channel_membership, handle_assistant_callback, get_assistants_markup,
+    get_content_menu_markup, handle_content_callback, handle_content_text
 )
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
 
@@ -75,6 +76,17 @@ async def main():
             )
         else:
             await handle_assistant_callback(call, bot)
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith('content_') or call.data in ['show_content_menu', 'back_main_menu'])
+    async def content_callback_handler(call: types.CallbackQuery):
+        await handle_content_callback(call, bot)
+
+    # Register content text handler
+    bot.register_message_handler(
+        handle_content_text,
+        func=lambda message: message.from_user.id in handlers.user_content_state,
+        content_types=['text'],
+        pass_bot=True)
 
     # Start bot
     print("Starting Gemini_Telegram_Bot.")
