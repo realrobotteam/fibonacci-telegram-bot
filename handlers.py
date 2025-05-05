@@ -814,6 +814,8 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
 
 async def handle_assistant_text(message: Message, bot: TeleBot) -> None:
     user_id = message.from_user.id
+    print("assistant handler called", user_id, user_content_state.get(user_id))
+    await bot.send_message(message.chat.id, "در حال پردازش درخواست دستیار ...")
     if user_id not in user_content_state:
         return
     
