@@ -447,18 +447,17 @@ async def start(message: Message, bot: TeleBot) -> None:
         reply_markup=get_support_markup()
     )
 
-@dp.message_handler(content_types=['text'])
-async def gemini_stream_handler(message: types.Message):
+async def gemini_stream_handler(message: Message, bot: TeleBot) -> None:
     """
     پردازش پیام‌های متنی و ارسال به Gemini
     """
-    if not await check_user_membership(message):
+    if not await check_user_membership(message, bot):
         return
         
-    if not await check_rate_limit(message):
+    if not await check_rate_limit(message, bot):
         return
         
-    if not await check_points(message):
+    if not await check_points(message, bot):
         return
         
     user_id = message.from_user.id
@@ -469,22 +468,19 @@ async def gemini_stream_handler(message: types.Message):
         print(f"Successfully deducted points from user {user_id}")
     else:
         print(f"Failed to deduct points from user {user_id}")
-        await message.answer("⚠️ خطا در کسر امتیاز. لطفاً دوباره تلاش کنید.")
+        await bot.reply_to(message, "⚠️ خطا در کسر امتیاز. لطفاً دوباره تلاش کنید.")
         return
     
     # نمایش وضعیت تایپینگ
-    await message.answer_chat_action("typing")
+    await bot.send_chat_action(message.chat.id, "typing")
     
     try:
         # ارسال پیام به Gemini و دریافت پاسخ
-        response = await gemini_stream(message.text)
-        
-        # ارسال پاسخ به کاربر
-        await message.answer(response)
+        response = await gemini.gemini_stream(bot, message, message.text, model_1)
         
     except Exception as e:
         print(f"Error in gemini_stream_handler: {str(e)}")
-        await message.answer("⚠️ متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید.")
+        await bot.reply_to(message, "⚠️ متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید.")
 
 async def gemini_pro_stream_handler(message: Message, bot: TeleBot) -> None:
     if not await check_rate_limit(message, bot):
@@ -682,7 +678,7 @@ async def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> 
 برای شروع، سوال درسی خودتون رو بپرسید.
 """,
         "assistant_translator": """
-🌐 من یک مترجم و مدرس زبان هستم:
+�� من یک مترجم و مدرس زبان هستم:
 • ترجمه متون به زبان‌های مختلف
 • رفع اشکال گرامری
 • آموزش زبان

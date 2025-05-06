@@ -60,6 +60,8 @@ async def main():
     bot.register_message_handler(clear,                         commands=['clear'],         pass_bot=True)
     bot.register_message_handler(switch,                        commands=['switch'],        pass_bot=True)
     bot.register_message_handler(gemini_photo_handler,          content_types=["photo"],    pass_bot=True)
+    
+    # Register handler for private text messages with no special state
     bot.register_message_handler(
         gemini_private_handler,
         func=lambda message: message.chat.type == "private" and (message.from_user.id not in handlers.user_content_state or not handlers.user_content_state[message.from_user.id]['type'].startswith('assistant_')),
@@ -73,7 +75,7 @@ async def main():
         pass_bot=True
     )
 
-    # Register callback handler
+    # Register callback handlers
     @bot.callback_query_handler(func=lambda call: call.data.startswith('assistant_') or call.data == 'show_assistants')
     async def callback_handler(call: types.CallbackQuery):
         if call.data == 'show_assistants':
@@ -97,14 +99,6 @@ async def main():
     @bot.callback_query_handler(func=lambda call: call.data in ['show_points', 'show_referral', 'back_main_menu'])
     async def points_callback_handler(call: types.CallbackQuery):
         await handle_callback(call, bot)
-
-    # Register gemini_stream_handler for normal text messages
-    bot.register_message_handler(
-        gemini_stream_handler,
-        func=lambda message: True,
-        content_types=['text'],
-        pass_bot=True
-    )
 
     # Start bot
     print("Starting Gemini_Telegram_Bot.")
