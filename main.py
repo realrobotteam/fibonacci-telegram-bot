@@ -15,7 +15,7 @@ from handlers import (
     gemini_private_handler, gemini_photo_handler, gemini_edit_handler, draw_handler,
     handle_channel_membership, handle_assistant_callback, get_assistants_markup,
     get_content_menu_markup, handle_content_callback, handle_content_text, get_special_tools_markup, handle_special_tools_callback,
-    handle_points, handle_referral, handle_callback
+    handle_callback
 )
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
 

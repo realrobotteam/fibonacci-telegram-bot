@@ -926,79 +926,6 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
             reply_markup=get_support_markup()
         )
 
-async def handle_points(message: Message, bot: TeleBot) -> None:
-    """
-    هندلر نمایش امتیازات
-    """
-    user_id = message.from_user.id
-    
-    # لاگ دیباگ
-    print(f"POINTS HANDLER - Getting points for user {user_id}")
-    
-    # خواندن امتیاز مستقیماً از دیتابیس
-    conn = sqlite3.connect(points_system.db_path)
-    c = conn.cursor()
-    
-    # بررسی و ریست امتیازات روزانه
-    points_system._check_daily_reset(user_id)
-    
-    c.execute('SELECT points FROM users WHERE user_id = ?', (user_id,))
-    result = c.fetchone()
-    
-    if result:
-        points = result[0]
-        print(f"POINTS HANDLER - User {user_id} has {points} points in database")
-    else:
-        points = 100
-        print(f"POINTS HANDLER - User {user_id} not found in database, using default 100 points")
-        # ایجاد کاربر جدید
-        c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
-                 (user_id, datetime.now().strftime('%Y-%m-%d')))
-        conn.commit()
-    
-    conn.close()
-    
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🎯 کد دعوت", callback_data="show_referral"))
-    markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
-    
-    text = f"💎 امتیاز فعلی شما: {points}\n\n"
-    text += "با هر پیام ۵ امتیاز کسر می‌شود.\n"
-    text += "امتیازات هر روز صبح به ۱۰۰ ریست می‌شوند.\n"
-    text += "با دعوت دوستان می‌توانید امتیاز بیشتری کسب کنید!"
-    
-    await bot.send_message(
-        message.chat.id,
-        text,
-        reply_markup=markup
-    )
-
-async def handle_referral(message: Message, bot: TeleBot) -> None:
-    """
-    هندلر کد رفرال
-    """
-    user_id = message.from_user.id
-    referral_code = points_system.get_referral_code(user_id)
-    
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
-    
-    # ساخت لینک دعوت
-    bot_username = (await bot.get_me()).username
-    invite_link = f"https://t.me/{bot_username}?start={referral_code}"
-    
-    text = "🎯 لینک دعوت شما:\n\n"
-    text += f"`{invite_link}`\n\n"
-    text += "با هر دعوت موفق، ۵۰ امتیاز دریافت می‌کنید!\n"
-    text += "برای دعوت دوستان، لینک بالا را به آنها بدهید."
-    
-    await bot.send_message(
-        message.chat.id,
-        text,
-        reply_markup=markup,
-        parse_mode="Markdown"
-    )
-
 async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
     """
     هندلر کلیک روی دکمه‌ها
@@ -1007,28 +934,73 @@ async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
     
     if call.data == "show_points":
         await bot.answer_callback_query(call.id)
-        # استفاده از message.from_user.id اشتباه است، باید از call.from_user.id استفاده کنیم
-        message = types.Message.de_json(
-            {
-                'chat': {'id': call.message.chat.id},
-                'from': {'id': call.from_user.id, 'first_name': call.from_user.first_name}
-            }
+        
+        # به جای ساخت شیء Message، مستقیماً با SQLite کار می‌کنیم
+        user_id = call.from_user.id
+        chat_id = call.message.chat.id
+        
+        # بررسی امتیاز
+        conn = sqlite3.connect(points_system.db_path)
+        c = conn.cursor()
+        
+        # بررسی و ریست امتیازات روزانه
+        points_system._check_daily_reset(user_id)
+        
+        c.execute('SELECT points FROM users WHERE user_id = ?', (user_id,))
+        result = c.fetchone()
+        
+        if result:
+            points = result[0]
+        else:
+            points = 100
+            # ایجاد کاربر جدید
+            c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
+                    (user_id, datetime.now().strftime('%Y-%m-%d')))
+            conn.commit()
+            
+        conn.close()
+        
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("🎯 کد دعوت", callback_data="show_referral"))
+        markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
+        
+        text = f"💎 امتیاز فعلی شما: {points}\n\n"
+        text += "با هر پیام ۵ امتیاز کسر می‌شود.\n"
+        text += "امتیازات هر روز صبح به ۱۰۰ ریست می‌شوند.\n"
+        text += "با دعوت دوستان می‌توانید امتیاز بیشتری کسب کنید!"
+        
+        await bot.send_message(
+            chat_id,
+            text,
+            reply_markup=markup
         )
-        message.from_user = call.from_user
-        message.chat = call.message.chat
-        await handle_points(message, bot)
         
     elif call.data == "show_referral":
         await bot.answer_callback_query(call.id)
-        message = types.Message.de_json(
-            {
-                'chat': {'id': call.message.chat.id},
-                'from': {'id': call.from_user.id, 'first_name': call.from_user.first_name}
-            }
+        
+        user_id = call.from_user.id
+        chat_id = call.message.chat.id
+        
+        referral_code = points_system.get_referral_code(user_id)
+        
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
+        
+        # ساخت لینک دعوت
+        bot_username = (await bot.get_me()).username
+        invite_link = f"https://t.me/{bot_username}?start={referral_code}"
+        
+        text = "🎯 لینک دعوت شما:\n\n"
+        text += f"`{invite_link}`\n\n"
+        text += "با هر دعوت موفق، ۵۰ امتیاز دریافت می‌کنید!\n"
+        text += "برای دعوت دوستان، لینک بالا را به آنها بدهید."
+        
+        await bot.send_message(
+            chat_id,
+            text,
+            reply_markup=markup,
+            parse_mode="Markdown"
         )
-        message.from_user = call.from_user
-        message.chat = call.message.chat
-        await handle_referral(message, bot)
         
     elif call.data == "back_main_menu":
         await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
