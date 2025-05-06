@@ -928,8 +928,10 @@ async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
     هندلر کلیک روی دکمه‌ها
     """
     if call.data == "show_points":
+        await bot.answer_callback_query(call.id)
         await handle_points(call.message, bot)
     elif call.data == "show_referral":
+        await bot.answer_callback_query(call.id)
         await handle_referral(call.message, bot)
     elif call.data == "back_main_menu":
         await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
@@ -937,18 +939,16 @@ async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
         await bot.send_message(
             call.message.chat.id,
             "به منوی اصلی بازگشتید.",
-            "لطفاً یکی از دستیارهای هوشمند را انتخاب کنید:",
-            reply_markup=get_assistants_markup()
+            reply_markup=get_support_markup()
         )
     elif call.data == "show_content_menu":
         await handle_content_callback(call, bot)
     elif call.data == "show_special_tools":
         await handle_special_tools_callback(call, bot)
-    elif call.data == "back_main_menu":
-        await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
+    elif call.data == "show_assistants":
         await bot.answer_callback_query(call.id)
         await bot.send_message(
             call.message.chat.id,
-            "به منوی اصلی بازگشتید.",
-            reply_markup=get_support_markup()
+            "🤖 لطفاً یکی از دستیارهای هوشمند را انتخاب کنید:",
+            reply_markup=get_assistants_markup()
         )
