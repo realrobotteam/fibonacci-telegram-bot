@@ -795,6 +795,10 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
                 await gemini.gemini_stream(bot, message, content_prompts[content_type], model_1, reply_markup=get_support_markup())
             else:
                 await gemini.gemini_stream(bot, message, content_prompts[content_type], model_2, reply_markup=get_support_markup())
+        
+        # کسر امتیاز بعد از ارسال پیام
+        points_system.deduct_points(user_id)
+        
         del user_content_state[user_id]
     else:
         # اگر کلید پیدا نشد، state را پاک کن تا کاربر سردرگم نشود

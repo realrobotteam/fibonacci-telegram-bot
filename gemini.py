@@ -8,6 +8,7 @@ from md2tgmd import escape
 from telebot import TeleBot
 from config import conf, generation_config
 from google import genai
+from points_system import PointsSystem
 
 gemini_draw_dict = {}
 gemini_chat_dict = {}
@@ -24,6 +25,8 @@ download_pic_notify     =       conf["download_pic_notify"]
 search_tool = {'google_search': {}}
 
 client = genai.Client(api_key=sys.argv[2])
+
+points_system = PointsSystem()
 
 async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str, reply_markup=None):
     sent_message = None
@@ -54,7 +57,6 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str, rep
                 current_time = time.time()
 
                 if current_time - last_update >= update_interval:
-
                     try:
                         await bot.edit_message_text(
                             escape(full_response),
@@ -82,6 +84,8 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str, rep
                 parse_mode="MarkdownV2",
                 reply_markup=reply_markup
             )
+            # کسر امتیاز بعد از دریافت پاسخ
+            points_system.deduct_points(message.from_user.id)
         except Exception as e:
             try:
                 if "parse markdown" in str(e).lower():
@@ -91,9 +95,10 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str, rep
                         message_id=sent_message.message_id,
                         reply_markup=reply_markup
                     )
+                    # کسر امتیاز بعد از دریافت پاسخ
+                    points_system.deduct_points(message.from_user.id)
             except Exception:
                 traceback.print_exc()
-
 
     except Exception as e:
         traceback.print_exc()
