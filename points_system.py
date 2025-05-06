@@ -48,6 +48,11 @@ class PointsSystem:
         return result[0] if result else 100
 
     def deduct_points(self, user_id, amount=5):
+        """
+        کسر امتیاز از کاربر
+        """
+        print(f"Attempting to deduct {amount} points from user {user_id}")
+        
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         
@@ -55,17 +60,30 @@ class PointsSystem:
         self._check_daily_reset(user_id)
         
         # بررسی وجود کاربر
-        c.execute('SELECT 1 FROM users WHERE user_id = ?', (user_id,))
-        if not c.fetchone():
+        c.execute('SELECT points FROM users WHERE user_id = ?', (user_id,))
+        result = c.fetchone()
+        
+        if not result:
+            print(f"User {user_id} not found, creating new user")
             # اگر کاربر وجود نداشت، آن را با امتیاز پیش‌فرض ایجاد کن
             c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
                      (user_id, datetime.now().strftime('%Y-%m-%d')))
             conn.commit()
+            current_points = 100
+        else:
+            current_points = result[0]
+            print(f"Current points for user {user_id}: {current_points}")
         
-        # کسر امتیاز
-        c.execute('UPDATE users SET points = points - ? WHERE user_id = ? AND points >= ?',
-                 (amount, user_id, amount))
-        success = c.rowcount > 0
+        if current_points >= amount:
+            # کسر امتیاز
+            c.execute('UPDATE users SET points = points - ? WHERE user_id = ?',
+                     (amount, user_id))
+            success = c.rowcount > 0
+            print(f"Points deduction {'successful' if success else 'failed'}")
+        else:
+            print(f"Not enough points. Current: {current_points}, Required: {amount}")
+            success = False
+        
         conn.commit()
         conn.close()
         return success
@@ -135,4 +153,26 @@ class PointsSystem:
             referral_code = result[0]
         
         conn.close()
-        return referral_code 
+        return referral_code
+
+    def debug_user(self, user_id):
+        """
+        نمایش اطلاعات دیباگ برای یک کاربر
+        """
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        # بررسی وجود کاربر
+        c.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
+        result = c.fetchone()
+        
+        if result:
+            print(f"User {user_id} exists in database:")
+            print(f"Points: {result[1]}")
+            print(f"Last reset: {result[2]}")
+            print(f"Referral code: {result[3]}")
+        else:
+            print(f"User {user_id} does not exist in database")
+        
+        conn.close()
+        return result 

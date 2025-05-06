@@ -200,14 +200,20 @@ async def check_points(message: Message, bot: TeleBot) -> bool:
     بررسی امتیازات کاربر
     """
     user_id = message.from_user.id
+    print(f"Checking points for user {user_id}")
+    
     points = points_system.get_user_points(user_id)
+    print(f"User {user_id} has {points} points")
     
     if points < 5:
+        print(f"User {user_id} has insufficient points")
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("💎 خرید امتیاز", url="https://zarinp.al/707658"))
         await bot.reply_to(
             message,
-            f"⚠️ امتیاز شما تمام شده است!\n\nامتیاز فعلی: {points}\n\nبرای خرید امتیاز بیشتر کلیک کنید:",
+            "⚠️ امتیازات شما کافی نیست!\n"
+            "برای استفاده از ربات باید حداقل 5 امتیاز داشته باشید.\n"
+            "امتیازات شما هر روز صبح به 100 امتیاز ریست می‌شود.",
             reply_markup=markup
         )
         return False
@@ -441,20 +447,44 @@ async def start(message: Message, bot: TeleBot) -> None:
         reply_markup=get_support_markup()
     )
 
-async def gemini_stream_handler(message: Message, bot: TeleBot) -> None:
-    if not await check_rate_limit(message, bot):
+@dp.message_handler(content_types=['text'])
+async def gemini_stream_handler(message: types.Message):
+    """
+    پردازش پیام‌های متنی و ارسال به Gemini
+    """
+    if not await check_user_membership(message):
         return
-    if is_creator_question(message.text):
-        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
+        
+    if not await check_rate_limit(message):
         return
-    if not await check_user_membership(message, bot):
+        
+    if not await check_points(message):
         return
+        
+    user_id = message.from_user.id
+    print(f"Processing message from user {user_id}")
+    
+    # کسر امتیاز
+    if points_system.deduct_points(user_id):
+        print(f"Successfully deducted points from user {user_id}")
+    else:
+        print(f"Failed to deduct points from user {user_id}")
+        await message.answer("⚠️ خطا در کسر امتیاز. لطفاً دوباره تلاش کنید.")
+        return
+    
+    # نمایش وضعیت تایپینگ
+    await message.answer_chat_action("typing")
+    
     try:
-        m = message.text.strip().split(maxsplit=1)[1].strip()
-    except IndexError:
-        await bot.reply_to(message, escape("Please add what you want to say after /gemini. \nFor example: `/gemini Who is john lennon?`"), parse_mode="MarkdownV2")
-        return
-    await gemini.gemini_stream(bot, message, m, model_1)
+        # ارسال پیام به Gemini و دریافت پاسخ
+        response = await gemini_stream(message.text)
+        
+        # ارسال پاسخ به کاربر
+        await message.answer(response)
+        
+    except Exception as e:
+        print(f"Error in gemini_stream_handler: {str(e)}")
+        await message.answer("⚠️ متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید.")
 
 async def gemini_pro_stream_handler(message: Message, bot: TeleBot) -> None:
     if not await check_rate_limit(message, bot):
