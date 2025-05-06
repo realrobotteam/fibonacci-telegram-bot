@@ -6,6 +6,8 @@ from config import conf
 import gemini
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
 import time
+from points_system import PointsSystem
+import sqlite3
 
 error_info              =       conf["error_info"]
 before_generate_info    =       conf["before_generate_info"]
@@ -19,6 +21,7 @@ default_model_dict      = gemini.default_model_dict
 gemini_draw_dict        = gemini.gemini_draw_dict
 
 user_message_times = {}
+points_system = PointsSystem()
 
 # دیکشنری برای ذخیره state تولید محتوا برای هر کاربر
 # مقدار: {'type': نوع دسته, 'last_message_id': آیدی پیام راهنما}
@@ -112,8 +115,14 @@ def get_support_markup() -> InlineKeyboardMarkup:
     )
     markup.add(
         InlineKeyboardButton("🤖 دستیارهای هوشمند", callback_data="show_assistants"),
-        InlineKeyboardButton("📝 تولید محتوای متنی", callback_data="show_content_menu"),
-        InlineKeyboardButton("🛠 ابزارهای متنی ویژه", callback_data="show_special_tools")
+        InlineKeyboardButton("📝 تولید محتوای متنی", callback_data="show_content_menu")
+    )
+    markup.add(
+        InlineKeyboardButton("🛠 ابزارهای متنی ویژه", callback_data="show_special_tools"),
+        InlineKeyboardButton("💎 امتیازات من", callback_data="show_points")
+    )
+    markup.add(
+        InlineKeyboardButton("🎯 کد دعوت", callback_data="show_referral")
     )
     return markup
 
@@ -364,41 +373,54 @@ def is_creator_question(text: str) -> bool:
     return False
 
 async def start(message: Message, bot: TeleBot) -> None:
-    if not await check_rate_limit(message, bot):
+    """
+    هندلر دستور /start
+    """
+    user_id = message.from_user.id
+    
+    # بررسی کد رفرال
+    if len(message.text.split()) > 1:
+        referral_code = message.text.split()[1]
+        # پیدا کردن کاربر دعوت‌کننده با کد رفرال
+        conn = sqlite3.connect(points_system.db_path)
+        c = conn.cursor()
+        c.execute('SELECT user_id FROM users WHERE referral_code = ?', (referral_code,))
+        result = c.fetchone()
+        conn.close()
+        
+        if result and result[0] != user_id:
+            referrer_id = result[0]
+            if points_system.add_referral_points(referrer_id, user_id):
+                await bot.send_message(
+                    message.chat.id,
+                    "🎉 به ربات خوش آمدید!\n"
+                    "شما با کد دعوت وارد شده‌اید و ۵۰ امتیاز به دعوت‌کننده اضافه شد!"
+                )
+    
+    if not await check_user_membership(message, bot):
         return
-    if is_creator_question(message.text):
-        await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
-        return
-    try:
-        if not await check_user_membership(message, bot):
-            return
-        welcome_text = escape(f"""
+    
+    welcome_text = escape(f"""
 👋 سلام {message.from_user.first_name} عزیز!
 
 🤖 به ربات هوش مصنوعی فیبوناچی خوش آمدید!
 
 📝 شما می‌تونید:
 • سوالات خود رو بپرسید
-• از دستور /gemini برای استفاده از مدل پیشرفته استفاده کنید
-• از دستور /draw برای طراحی تصاویر استفاده کنید
-• از دستور /edit برای ویرایش عکس‌ها استفاده کنید
-• از دستیارهای هوشمند ما استفاده کنید
+• متن‌ها رو ویرایش کنید
+• تصاویر رو تحلیل کنید
+• و خیلی کارهای دیگه...
 
-💡 مثال‌ها:
-• `/gemini هوش مصنوعی چیست؟`
-• `/draw یک گربه بامزه بکش`
-• `عکس من رو به سبک انیمه تغییر بده`
+💎 امتیاز فعلی شما: {points_system.get_user_points(user_id)}
 
-🔄 برای پاک کردن تاریخچه چت از دستور /clear استفاده کنید
-🔄 برای تغییر مدل پیش‌فرض از دستور /switch استفاده کنید
-
-❓ اگر سوالی دارید، در کانال ما بپرسید: @fibonacciai
-
-💝 اگر از ربات راضی هستید، می‌تونید از ما حمایت کنید
+برای شروع، یکی از گزینه‌های زیر رو انتخاب کنید:
 """)
-        await bot.reply_to(message, welcome_text, parse_mode="MarkdownV2", reply_markup=get_support_markup())
-    except IndexError:
-        await bot.reply_to(message, error_info)
+    
+    await bot.reply_to(
+        message,
+        welcome_text,
+        reply_markup=get_support_markup()
+    )
 
 async def gemini_stream_handler(message: Message, bot: TeleBot) -> None:
     if not await check_rate_limit(message, bot):
@@ -820,6 +842,93 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
         await bot.answer_callback_query(call.id)
     elif call.data == "back_main_menu":
         await delete_last_guide_message(user_id, call.message.chat.id, bot)
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "به منوی اصلی بازگشتید.",
+            reply_markup=get_support_markup()
+        )
+
+async def check_points(message: Message, bot: TeleBot) -> bool:
+    """
+    بررسی امتیازات کاربر
+    """
+    user_id = message.from_user.id
+    points = points_system.get_user_points(user_id)
+    
+    if points < 5:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("💎 خرید امتیاز", url="https://zarinp.al/707658"))
+        await bot.reply_to(
+            message,
+            f"⚠️ امتیاز شما تمام شده است!\n\nامتیاز فعلی: {points}\n\nبرای خرید امتیاز بیشتر کلیک کنید:",
+            reply_markup=markup
+        )
+        return False
+    
+    return True
+
+async def handle_referral(message: Message, bot: TeleBot) -> None:
+    """
+    هندلر کد رفرال
+    """
+    user_id = message.from_user.id
+    referral_code = points_system.get_referral_code(user_id)
+    
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
+    
+    await bot.reply_to(
+        message,
+        f"🎯 کد دعوت شما: `{referral_code}`\n\n"
+        "با هر دعوت موفق، ۵۰ امتیاز دریافت می‌کنید!\n"
+        "برای دعوت دوستان، کد بالا را به آنها بدهید.",
+        reply_markup=markup,
+        parse_mode="Markdown"
+    )
+
+async def handle_points(message: Message, bot: TeleBot) -> None:
+    """
+    هندلر نمایش امتیازات
+    """
+    user_id = message.from_user.id
+    points = points_system.get_user_points(user_id)
+    
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🎯 کد دعوت", callback_data="show_referral"))
+    markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
+    
+    await bot.reply_to(
+        message,
+        f"💎 امتیاز فعلی شما: {points}\n\n"
+        "با هر پیام ۵ امتیاز کسر می‌شود.\n"
+        "امتیازات هر روز صبح به ۱۰۰ ریست می‌شوند.\n"
+        "با دعوت دوستان می‌توانید امتیاز بیشتری کسب کنید!",
+        reply_markup=markup
+    )
+
+async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
+    """
+    هندلر کلیک روی دکمه‌ها
+    """
+    if call.data == "show_points":
+        await handle_points(call.message, bot)
+    elif call.data == "show_referral":
+        await handle_referral(call.message, bot)
+    elif call.data == "show_assistants":
+        await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id,
+            "لطفاً یکی از دستیارهای هوشمند را انتخاب کنید:",
+            reply_markup=get_assistants_markup()
+        )
+    elif call.data == "show_content_menu":
+        await handle_content_callback(call, bot)
+    elif call.data == "show_special_tools":
+        await handle_special_tools_callback(call, bot)
+    elif call.data == "back_main_menu":
+        await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
         await bot.answer_callback_query(call.id)
         await bot.send_message(
             call.message.chat.id,
