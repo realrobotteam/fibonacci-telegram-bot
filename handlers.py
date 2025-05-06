@@ -884,25 +884,6 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
             reply_markup=get_support_markup()
         )
 
-async def handle_referral(message: Message, bot: TeleBot) -> None:
-    """
-    هندلر کد رفرال
-    """
-    user_id = message.from_user.id
-    referral_code = points_system.get_referral_code(user_id)
-    
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
-    
-    await bot.reply_to(
-        message,
-        f"🎯 کد دعوت شما: `{referral_code}`\n\n"
-        "با هر دعوت موفق، ۵۰ امتیاز دریافت می‌کنید!\n"
-        "برای دعوت دوستان، کد بالا را به آنها بدهید.",
-        reply_markup=markup,
-        parse_mode="Markdown"
-    )
-
 async def handle_points(message: Message, bot: TeleBot) -> None:
     """
     هندلر نمایش امتیازات
@@ -914,13 +895,36 @@ async def handle_points(message: Message, bot: TeleBot) -> None:
     markup.add(InlineKeyboardButton("🎯 کد دعوت", callback_data="show_referral"))
     markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
     
-    await bot.reply_to(
-        message,
-        f"💎 امتیاز فعلی شما: {points}\n\n"
-        "با هر پیام ۵ امتیاز کسر می‌شود.\n"
-        "امتیازات هر روز صبح به ۱۰۰ ریست می‌شوند.\n"
-        "با دعوت دوستان می‌توانید امتیاز بیشتری کسب کنید!",
+    text = f"💎 امتیاز فعلی شما: {points}\n\n"
+    text += "با هر پیام ۵ امتیاز کسر می‌شود.\n"
+    text += "امتیازات هر روز صبح به ۱۰۰ ریست می‌شوند.\n"
+    text += "با دعوت دوستان می‌توانید امتیاز بیشتری کسب کنید!"
+    
+    await bot.send_message(
+        message.chat.id,
+        text,
         reply_markup=markup
+    )
+
+async def handle_referral(message: Message, bot: TeleBot) -> None:
+    """
+    هندلر کد رفرال
+    """
+    user_id = message.from_user.id
+    referral_code = points_system.get_referral_code(user_id)
+    
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
+    
+    text = f"🎯 کد دعوت شما: `{referral_code}`\n\n"
+    text += "با هر دعوت موفق، ۵۰ امتیاز دریافت می‌کنید!\n"
+    text += "برای دعوت دوستان، کد بالا را به آنها بدهید."
+    
+    await bot.send_message(
+        message.chat.id,
+        text,
+        reply_markup=markup,
+        parse_mode="Markdown"
     )
 
 async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
