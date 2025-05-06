@@ -17,6 +17,20 @@ from handlers import (
     get_content_menu_markup, handle_content_callback, handle_content_text, get_special_tools_markup, handle_special_tools_callback
 )
 from channel_checker import check_membership, get_join_channel_markup, CHANNEL_ID
+from telebot import TeleBot
+from telebot.handler_backends import State, StatesGroup
+from telebot.storage import StateMemoryStorage
+import json
+from datetime import datetime
+from database import Database
+from new_features.financial_assistant import FinancialAssistant
+from new_features.language_learning import LanguageLearning
+from new_features.code_assistant import CodeAssistant
+from new_features.content_summarizer import ContentSummarizer
+from new_features.smart_translator import SmartTranslator
+from new_features.content_generator import ContentGenerator
+from new_features.sentiment_analyzer import SentimentAnalyzer
+from new_features.language_detector import LanguageDetector
 
 # Init args
 parser = argparse.ArgumentParser()
@@ -96,6 +110,42 @@ async def main():
     # Start bot
     print("Starting Gemini_Telegram_Bot.")
     await bot.polling(none_stop=True)
+
+class Bot:
+    def __init__(self):
+        # ... existing code ...
+        
+        # ایجاد نمونه‌های کلاس‌های جدید
+        self.financial_assistant = FinancialAssistant(self.bot)
+        self.language_learning = LanguageLearning(self.bot)
+        self.code_assistant = CodeAssistant(self.bot)
+        self.content_summarizer = ContentSummarizer(self.bot)
+        self.smart_translator = SmartTranslator(self.bot)
+        self.content_generator = ContentGenerator(self.bot)
+        self.sentiment_analyzer = SentimentAnalyzer(self.bot)
+        self.language_detector = LanguageDetector(self.bot)
+        
+        # ... existing code ...
+        
+    async def handle_callback(self, call: types.CallbackQuery):
+        """پردازش callback‌ها"""
+        if call.data == "financial_assistant":
+            await self.financial_assistant.show_menu(call)
+        elif call.data == "language_learning":
+            await self.language_learning.show_menu(call)
+        elif call.data == "code_assistant":
+            await self.code_assistant.show_menu(call)
+        elif call.data == "content_summarizer":
+            await self.content_summarizer.show_menu(call)
+        elif call.data == "smart_translator":
+            await self.smart_translator.show_menu(call)
+        elif call.data == "content_generator":
+            await self.content_generator.show_menu(call)
+        elif call.data == "sentiment_analyzer":
+            await self.sentiment_analyzer.show_menu(call)
+        elif call.data == "language_detector":
+            await self.language_detector.show_menu(call)
+        # ... existing code ...
 
 if __name__ == '__main__':
     asyncio.run(main())
