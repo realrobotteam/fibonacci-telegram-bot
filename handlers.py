@@ -920,9 +920,14 @@ async def handle_referral(message: Message, bot: TeleBot) -> None:
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
     
-    text = f"🎯 کد دعوت شما: `{referral_code}`\n\n"
+    # ساخت لینک دعوت
+    bot_username = (await bot.get_me()).username
+    invite_link = f"https://t.me/{bot_username}?start={referral_code}"
+    
+    text = "🎯 لینک دعوت شما:\n\n"
+    text += f"`{invite_link}`\n\n"
     text += "با هر دعوت موفق، ۵۰ امتیاز دریافت می‌کنید!\n"
-    text += "برای دعوت دوستان، کد بالا را به آنها بدهید."
+    text += "برای دعوت دوستان، لینک بالا را به آنها بدهید."
     
     await bot.send_message(
         message.chat.id,
