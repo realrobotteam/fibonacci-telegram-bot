@@ -32,6 +32,16 @@ class PointsSystem:
     def get_user_points(self, user_id):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
+        
+        # بررسی وجود کاربر
+        c.execute('SELECT 1 FROM users WHERE user_id = ?', (user_id,))
+        if not c.fetchone():
+            # اگر کاربر وجود نداشت، آن را با امتیاز پیش‌فرض ایجاد کن
+            c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
+                     (user_id, datetime.now().strftime('%Y-%m-%d')))
+            conn.commit()
+            return 100
+        
         c.execute('SELECT points FROM users WHERE user_id = ?', (user_id,))
         result = c.fetchone()
         conn.close()
@@ -44,6 +54,15 @@ class PointsSystem:
         # بررسی و ریست امتیازات روزانه
         self._check_daily_reset(user_id)
         
+        # بررسی وجود کاربر
+        c.execute('SELECT 1 FROM users WHERE user_id = ?', (user_id,))
+        if not c.fetchone():
+            # اگر کاربر وجود نداشت، آن را با امتیاز پیش‌فرض ایجاد کن
+            c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
+                     (user_id, datetime.now().strftime('%Y-%m-%d')))
+            conn.commit()
+        
+        # کسر امتیاز
         c.execute('UPDATE users SET points = points - ? WHERE user_id = ? AND points >= ?',
                  (amount, user_id, amount))
         success = c.rowcount > 0
