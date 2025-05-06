@@ -31,6 +31,9 @@ points_system = PointsSystem()
 async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str, reply_markup=None):
     sent_message = None
     try:
+        # کسر امتیاز قبل از شروع پردازش
+        points_system.deduct_points(message.from_user.id)
+        
         sent_message = await bot.reply_to(message, "🤖 Generating answers...")
 
         chat = None
@@ -84,8 +87,6 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str, rep
                 parse_mode="MarkdownV2",
                 reply_markup=reply_markup
             )
-            # کسر امتیاز بعد از دریافت پاسخ
-            points_system.deduct_points(message.from_user.id)
         except Exception as e:
             try:
                 if "parse markdown" in str(e).lower():
@@ -95,8 +96,6 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str, rep
                         message_id=sent_message.message_id,
                         reply_markup=reply_markup
                     )
-                    # کسر امتیاز بعد از دریافت پاسخ
-                    points_system.deduct_points(message.from_user.id)
             except Exception:
                 traceback.print_exc()
 
@@ -113,7 +112,9 @@ async def gemini_stream(bot:TeleBot, message:Message, m:str, model_type:str, rep
             await bot.reply_to(message, f"{error_info}\nError details: {str(e)}", reply_markup=reply_markup)
 
 async def gemini_edit(bot: TeleBot, message: Message, m: str, photo_file: bytes):
-
+    # کسر امتیاز قبل از شروع پردازش
+    points_system.deduct_points(message.from_user.id)
+    
     image = Image.open(io.BytesIO(photo_file))
     try:
         response = await client.aio.models.generate_content(
@@ -131,6 +132,9 @@ async def gemini_edit(bot: TeleBot, message: Message, m: str, photo_file: bytes)
             await bot.send_photo(message.chat.id, photo)
 
 async def gemini_draw(bot:TeleBot, message:Message, m:str):
+    # کسر امتیاز قبل از شروع پردازش
+    points_system.deduct_points(message.from_user.id)
+    
     chat_dict = gemini_draw_dict
     if str(message.from_user.id) not in chat_dict:
         chat = client.aio.chats.create(
