@@ -98,6 +98,14 @@ async def main():
     async def points_callback_handler(call: types.CallbackQuery):
         await handle_callback(call, bot)
 
+    # Register gemini_stream_handler for normal text messages
+    bot.register_message_handler(
+        gemini_stream_handler,
+        func=lambda message: True,
+        content_types=['text'],
+        pass_bot=True
+    )
+
     # Start bot
     print("Starting Gemini_Telegram_Bot.")
     await bot.polling(none_stop=True)
