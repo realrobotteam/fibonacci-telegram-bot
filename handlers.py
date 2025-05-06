@@ -8,6 +8,7 @@ from channel_checker import check_membership, get_join_channel_markup, CHANNEL_I
 import time
 from points_system import PointsSystem
 import sqlite3
+from datetime import datetime
 
 error_info              =       conf["error_info"]
 before_generate_info    =       conf["before_generate_info"]
@@ -930,7 +931,32 @@ async def handle_points(message: Message, bot: TeleBot) -> None:
     هندلر نمایش امتیازات
     """
     user_id = message.from_user.id
-    points = points_system.get_user_points(user_id)
+    
+    # لاگ دیباگ
+    print(f"POINTS HANDLER - Getting points for user {user_id}")
+    
+    # خواندن امتیاز مستقیماً از دیتابیس
+    conn = sqlite3.connect(points_system.db_path)
+    c = conn.cursor()
+    
+    # بررسی و ریست امتیازات روزانه
+    points_system._check_daily_reset(user_id)
+    
+    c.execute('SELECT points FROM users WHERE user_id = ?', (user_id,))
+    result = c.fetchone()
+    
+    if result:
+        points = result[0]
+        print(f"POINTS HANDLER - User {user_id} has {points} points in database")
+    else:
+        points = 100
+        print(f"POINTS HANDLER - User {user_id} not found in database, using default 100 points")
+        # ایجاد کاربر جدید
+        c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
+                 (user_id, datetime.now().strftime('%Y-%m-%d')))
+        conn.commit()
+    
+    conn.close()
     
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("🎯 کد دعوت", callback_data="show_referral"))
@@ -977,12 +1003,33 @@ async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
     """
     هندلر کلیک روی دکمه‌ها
     """
+    print(f"CALLBACK HANDLER - Handling callback with data: {call.data}")
+    
     if call.data == "show_points":
         await bot.answer_callback_query(call.id)
-        await handle_points(call.message, bot)
+        # استفاده از message.from_user.id اشتباه است، باید از call.from_user.id استفاده کنیم
+        message = types.Message.de_json(
+            {
+                'chat': {'id': call.message.chat.id},
+                'from': {'id': call.from_user.id, 'first_name': call.from_user.first_name}
+            }
+        )
+        message.from_user = call.from_user
+        message.chat = call.message.chat
+        await handle_points(message, bot)
+        
     elif call.data == "show_referral":
         await bot.answer_callback_query(call.id)
-        await handle_referral(call.message, bot)
+        message = types.Message.de_json(
+            {
+                'chat': {'id': call.message.chat.id},
+                'from': {'id': call.from_user.id, 'first_name': call.from_user.first_name}
+            }
+        )
+        message.from_user = call.from_user
+        message.chat = call.message.chat
+        await handle_referral(message, bot)
+        
     elif call.data == "back_main_menu":
         await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
         await bot.answer_callback_query(call.id)
