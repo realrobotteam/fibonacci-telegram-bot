@@ -539,6 +539,17 @@ async def gemini_private_handler(message: Message, bot: TeleBot) -> None:
     if not await check_points(message, bot):
         return
         
+    user_id = message.from_user.id
+    print(f"PRIVATE HANDLER - Processing message from user {user_id}")
+    
+    # کسر امتیاز
+    if points_system.deduct_points(user_id):
+        print(f"PRIVATE HANDLER - Successfully deducted points from user {user_id}")
+    else:
+        print(f"PRIVATE HANDLER - Failed to deduct points from user {user_id}")
+        await bot.reply_to(message, "⚠️ خطا در کسر امتیاز. لطفاً دوباره تلاش کنید.")
+        return
+        
     m = message.text.strip()
     if is_creator_question(m):
         await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
@@ -678,7 +689,7 @@ async def handle_assistant_callback(call: types.CallbackQuery, bot: TeleBot) -> 
 برای شروع، سوال درسی خودتون رو بپرسید.
 """,
         "assistant_translator": """
-�� من یک مترجم و مدرس زبان هستم:
+🌐 من یک مترجم و مدرس زبان هستم:
 • ترجمه متون به زبان‌های مختلف
 • رفع اشکال گرامری
 • آموزش زبان

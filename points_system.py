@@ -75,14 +75,25 @@ class PointsSystem:
             print(f"Current points for user {user_id}: {current_points}")
         
         if current_points >= amount:
-            # کسر امتیاز
+            # اجرای کوئری کسر امتیاز
+            print(f"Executing SQL UPDATE query: UPDATE users SET points = points - {amount} WHERE user_id = {user_id}")
             c.execute('UPDATE users SET points = points - ? WHERE user_id = ?',
                      (amount, user_id))
-            success = c.rowcount > 0
+            rows_affected = c.rowcount
+            print(f"SQL query affected {rows_affected} rows")
+            success = rows_affected > 0
             print(f"Points deduction {'successful' if success else 'failed'}")
         else:
             print(f"Not enough points. Current: {current_points}, Required: {amount}")
             success = False
+        
+        # نمایش امتیاز کاربر بعد از کسر
+        c.execute('SELECT points FROM users WHERE user_id = ?', (user_id,))
+        after_result = c.fetchone()
+        if after_result:
+            print(f"Points after deduction: {after_result[0]}")
+        else:
+            print("Error: User not found after deduction!")
         
         conn.commit()
         conn.close()
