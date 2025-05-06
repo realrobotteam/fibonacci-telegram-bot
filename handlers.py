@@ -195,6 +195,25 @@ async def check_user_membership(message: Message, bot: TeleBot) -> bool:
         return False
     return True
 
+async def check_points(message: Message, bot: TeleBot) -> bool:
+    """
+    بررسی امتیازات کاربر
+    """
+    user_id = message.from_user.id
+    points = points_system.get_user_points(user_id)
+    
+    if points < 5:
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("💎 خرید امتیاز", url="https://zarinp.al/707658"))
+        await bot.reply_to(
+            message,
+            f"⚠️ امتیاز شما تمام شده است!\n\nامتیاز فعلی: {points}\n\nبرای خرید امتیاز بیشتر کلیک کنید:",
+            reply_markup=markup
+        )
+        return False
+    
+    return True
+
 async def handle_channel_membership(chat_member: ChatMemberUpdated, bot: TeleBot) -> None:
     """
     هندلر رویداد عضویت در کانال
@@ -491,6 +510,9 @@ async def gemini_private_handler(message: Message, bot: TeleBot) -> None:
         return
     if not await check_user_membership(message, bot):
         return
+    if not await check_points(message, bot):
+        return
+        
     m = message.text.strip()
     if is_creator_question(m):
         await bot.reply_to(message, escape("من توسط تیم هوش مصنوعی فیبوناچی ساخته شدم."), parse_mode="MarkdownV2")
@@ -509,6 +531,9 @@ async def gemini_photo_handler(message: Message, bot: TeleBot) -> None:
         return
     if not await check_user_membership(message, bot):
         return
+    if not await check_points(message, bot):
+        return
+        
     if message.chat.type != "private":
         s = message.caption or ""
         if not s or not (s.startswith("/gemini")):
@@ -539,6 +564,9 @@ async def gemini_edit_handler(message: Message, bot: TeleBot) -> None:
         return
     if not await check_user_membership(message, bot):
         return
+    if not await check_points(message, bot):
+        return
+        
     if not message.photo:
         await bot.reply_to(message, "pls send a photo")
         return
@@ -558,6 +586,9 @@ async def draw_handler(message: Message, bot: TeleBot) -> None:
         return
     if not await check_user_membership(message, bot):
         return
+    if not await check_points(message, bot):
+        return
+        
     try:
         m = message.text.strip().split(maxsplit=1)[1].strip()
     except IndexError:
@@ -704,6 +735,10 @@ async def handle_content_text(message: Message, bot: TeleBot) -> None:
     user_id = message.from_user.id
     if user_id not in user_content_state:
         return  # اگر کاربر دسته‌ای انتخاب نکرده باشد، کاری انجام نمی‌شود
+        
+    if not await check_points(message, bot):
+        return
+        
     content_type = user_content_state[user_id]['type']
     prompt = message.text.strip()
     # پیام راهنما بر اساس دسته انتخابی (همه ابزارها و تولید محتوا و دستیارها)
@@ -849,25 +884,6 @@ async def handle_special_tools_callback(call: types.CallbackQuery, bot: TeleBot)
             reply_markup=get_support_markup()
         )
 
-async def check_points(message: Message, bot: TeleBot) -> bool:
-    """
-    بررسی امتیازات کاربر
-    """
-    user_id = message.from_user.id
-    points = points_system.get_user_points(user_id)
-    
-    if points < 5:
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("💎 خرید امتیاز", url="https://zarinp.al/707658"))
-        await bot.reply_to(
-            message,
-            f"⚠️ امتیاز شما تمام شده است!\n\nامتیاز فعلی: {points}\n\nبرای خرید امتیاز بیشتر کلیک کنید:",
-            reply_markup=markup
-        )
-        return False
-    
-    return True
-
 async def handle_referral(message: Message, bot: TeleBot) -> None:
     """
     هندلر کد رفرال
@@ -915,11 +931,12 @@ async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
         await handle_points(call.message, bot)
     elif call.data == "show_referral":
         await handle_referral(call.message, bot)
-    elif call.data == "show_assistants":
+    elif call.data == "back_main_menu":
         await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
         await bot.answer_callback_query(call.id)
         await bot.send_message(
             call.message.chat.id,
+            "به منوی اصلی بازگشتید.",
             "لطفاً یکی از دستیارهای هوشمند را انتخاب کنید:",
             reply_markup=get_assistants_markup()
         )
