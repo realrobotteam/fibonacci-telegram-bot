@@ -142,12 +142,28 @@ class PointsSystem:
         return success
 
     def add_referral_points(self, referrer_id, referred_id):
+        """
+        اضافه کردن امتیاز رفرال به کاربر دعوت‌کننده
+        """
+        # جلوگیری از دعوت خود کاربر
+        if referrer_id == referred_id:
+            print(f"User {referrer_id} tried to refer themselves")
+            return False
+            
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         
         # بررسی اینکه آیا این رفرال قبلاً ثبت شده است
         c.execute('SELECT 1 FROM referrals WHERE referred_id = ?', (referred_id,))
         if c.fetchone():
+            print(f"User {referred_id} was already referred by someone")
+            conn.close()
+            return False
+            
+        # بررسی اینکه آیا کاربر دعوت شده از قبل وجود دارد (برای جلوگیری از سوءاستفاده)
+        c.execute('SELECT 1 FROM users WHERE user_id = ? AND points > 0', (referred_id,))
+        if c.fetchone():
+            print(f"User {referred_id} already exists and has been active before")
             conn.close()
             return False
         
@@ -159,6 +175,7 @@ class PointsSystem:
         c.execute('INSERT INTO referrals (referrer_id, referred_id, date) VALUES (?, ?, ?)',
                  (referrer_id, referred_id, current_time.strftime('%Y-%m-%d %H:%M:%S')))
         
+        print(f"User {referrer_id} successfully referred user {referred_id} and got 50 points")
         conn.commit()
         conn.close()
         return True
@@ -198,12 +215,25 @@ class PointsSystem:
         conn.close()
 
     def generate_referral_code(self, user_id):
+        """
+        تولید کد رفرال منحصر به فرد برای کاربر
+        """
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         
         # تولید کد رفرال منحصر به فرد
         import uuid
         referral_code = str(uuid.uuid4())[:8]
+        
+        print(f"Generating new referral code {referral_code} for user {user_id}")
+        
+        # بررسی تکراری بودن کد
+        c.execute('SELECT 1 FROM users WHERE referral_code = ?', (referral_code,))
+        while c.fetchone():
+            # اگر کد تکراری بود، یک کد جدید تولید کن
+            referral_code = str(uuid.uuid4())[:8]
+            print(f"Referral code was duplicate, regenerated: {referral_code}")
+            c.execute('SELECT 1 FROM users WHERE referral_code = ?', (referral_code,))
         
         c.execute('UPDATE users SET referral_code = ? WHERE user_id = ?',
                  (referral_code, user_id))
@@ -213,16 +243,33 @@ class PointsSystem:
         return referral_code
 
     def get_referral_code(self, user_id):
+        """
+        دریافت کد رفرال کاربر یا تولید کد جدید اگر کد قبلی وجود نداشته باشد
+        """
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         
+        # ابتدا اطمینان حاصل می‌کنیم که کاربر وجود دارد
+        c.execute('SELECT 1 FROM users WHERE user_id = ?', (user_id,))
+        if not c.fetchone():
+            # ایجاد کاربر جدید با امتیاز پیش‌فرض
+            current_time = datetime.now()
+            c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
+                     (user_id, current_time.strftime('%Y-%m-%d %H:%M:%S')))
+            conn.commit()
+            print(f"Created new user {user_id} for referral code generation")
+            
+        # دریافت کد رفرال کاربر
         c.execute('SELECT referral_code FROM users WHERE user_id = ?', (user_id,))
         result = c.fetchone()
         
         if not result or not result[0]:
+            # اگر کد رفرال نداشت، یک کد جدید تولید کن
             referral_code = self.generate_referral_code(user_id)
+            print(f"Generated new referral code for user {user_id}: {referral_code}")
         else:
             referral_code = result[0]
+            print(f"Retrieved existing referral code for user {user_id}: {referral_code}")
         
         conn.close()
         return referral_code

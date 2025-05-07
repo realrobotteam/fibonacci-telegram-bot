@@ -413,6 +413,8 @@ async def start(message: Message, bot: TeleBot) -> None:
     # بررسی کد رفرال
     if len(message.text.split()) > 1:
         referral_code = message.text.split()[1]
+        print(f"User {user_id} entered with referral code: {referral_code}")
+        
         # پیدا کردن کاربر دعوت‌کننده با کد رفرال
         conn = sqlite3.connect(points_system.db_path)
         c = conn.cursor()
@@ -422,12 +424,21 @@ async def start(message: Message, bot: TeleBot) -> None:
         
         if result and result[0] != user_id:
             referrer_id = result[0]
+            print(f"Found referrer: {referrer_id} for user {user_id}")
+            
             if points_system.add_referral_points(referrer_id, user_id):
                 await bot.send_message(
                     message.chat.id,
                     "🎉 به ربات خوش آمدید!\n"
                     "شما با کد دعوت وارد شده‌اید و ۵۰ امتیاز به دعوت‌کننده اضافه شد!"
                 )
+            else:
+                print(f"Failed to add referral points for referrer {referrer_id} and user {user_id}")
+        else:
+            if not result:
+                print(f"No user found with referral code: {referral_code}")
+            else:
+                print(f"User {user_id} tried to use their own referral code")
     
     if not await check_user_membership(message, bot):
         return
@@ -974,27 +985,38 @@ async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
         user_id = call.from_user.id
         chat_id = call.message.chat.id
         
-        referral_code = points_system.get_referral_code(user_id)
+        print(f"User {user_id} requested their referral code")
+        # بررسی و ریست امتیازات روزانه
+        points_system._check_daily_reset(user_id)
         
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
-        
-        # ساخت لینک دعوت
-        bot_username = (await bot.get_me()).username
-        invite_link = f"https://t.me/{bot_username}?start={referral_code}"
-        
-        text = "🎯 لینک دعوت شما:\n\n"
-        text += f"`{invite_link}`\n\n"
-        text += "با هر دعوت موفق، ۵۰ امتیاز دریافت می‌کنید!\n"
-        text += "برای دعوت دوستان، لینک بالا را به آنها بدهید."
-        
-        await bot.send_message(
-            chat_id,
-            text,
-            reply_markup=markup,
-            parse_mode="Markdown"
-        )
-        
+        try:
+            referral_code = points_system.get_referral_code(user_id)
+            
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
+            
+            # ساخت لینک دعوت
+            bot_username = (await bot.get_me()).username
+            invite_link = f"https://t.me/{bot_username}?start={referral_code}"
+            
+            text = "🎯 لینک دعوت شما:\n\n"
+            text += f"`{invite_link}`\n\n"
+            text += "با هر دعوت موفق، ۵۰ امتیاز دریافت می‌کنید!\n"
+            text += "برای دعوت دوستان، لینک بالا را به آنها بدهید."
+            
+            await bot.send_message(
+                chat_id,
+                text,
+                reply_markup=markup,
+                parse_mode="Markdown"
+            )
+        except Exception as e:
+            print(f"Error in show_referral for user {user_id}: {str(e)}")
+            await bot.send_message(
+                chat_id,
+                "⚠️ خطایی در تولید کد دعوت رخ داد. لطفاً دوباره تلاش کنید.",
+                reply_markup=get_support_markup()
+            )
     elif call.data == "back_main_menu":
         await delete_last_guide_message(call.from_user.id, call.message.chat.id, bot)
         await bot.answer_callback_query(call.id)
