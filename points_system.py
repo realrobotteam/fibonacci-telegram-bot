@@ -26,26 +26,67 @@ class PointsSystem:
                      FOREIGN KEY (referrer_id) REFERENCES users(user_id),
                      FOREIGN KEY (referred_id) REFERENCES users(user_id))''')
         
+        # بررسی و به‌روز‌رسانی ساختار دیتابیس برای پشتیبانی از فرمت تاریخ و زمان جدید
+        self._update_database_structure()
+        
+        conn.commit()
+        conn.close()
+
+    def _update_database_structure(self):
+        """
+        به‌روز‌رسانی ساختار دیتابیس برای استفاده از فرمت تاریخ و زمان کامل
+        """
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        # بررسی داده‌های موجود و تبدیل فرمت تاریخ قدیمی به فرمت جدید
+        c.execute('SELECT user_id, last_reset_date FROM users')
+        rows = c.fetchall()
+        
+        for user_id, last_reset_date in rows:
+            if last_reset_date and ' ' not in last_reset_date:
+                # اگر فرمت تاریخ قدیمی است (فقط تاریخ بدون زمان)
+                try:
+                    # تبدیل به فرمت جدید با زمان 00:00:00
+                    date_obj = datetime.strptime(last_reset_date, '%Y-%m-%d')
+                    new_date_format = date_obj.strftime('%Y-%m-%d 00:00:00')
+                    
+                    c.execute('UPDATE users SET last_reset_date = ? WHERE user_id = ?',
+                             (new_date_format, user_id))
+                except Exception as e:
+                    print(f"Error updating date format for user {user_id}: {e}")
+        
         conn.commit()
         conn.close()
 
     def get_user_points(self, user_id):
+        """
+        دریافت امتیاز کاربر و در صورت گذشت 24 ساعت، ریست امتیاز به 100
+        """
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         
-        # بررسی وجود کاربر
-        c.execute('SELECT 1 FROM users WHERE user_id = ?', (user_id,))
-        if not c.fetchone():
-            # اگر کاربر وجود نداشت، آن را با امتیاز پیش‌فرض ایجاد کن
-            c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
-                     (user_id, datetime.now().strftime('%Y-%m-%d')))
-            conn.commit()
-            return 100
+        print(f"Getting points for user {user_id}")
+        # ابتدا بررسی کنید که آیا باید امتیازات ریست شوند
+        self._check_daily_reset(user_id)
         
+        # بررسی وجود کاربر
         c.execute('SELECT points FROM users WHERE user_id = ?', (user_id,))
         result = c.fetchone()
+        
+        if not result:
+            # اگر کاربر وجود نداشت، آن را با امتیاز پیش‌فرض ایجاد کن
+            current_time = datetime.now()
+            c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
+                     (user_id, current_time.strftime('%Y-%m-%d %H:%M:%S')))
+            conn.commit()
+            print(f"Created new user {user_id} with 100 points")
+            return 100
+        
+        points = result[0] if result else 100
+        print(f"User {user_id} has {points} points")
         conn.close()
-        return result[0] if result else 100
+        return points
 
     def deduct_points(self, user_id, amount=5):
         """
@@ -66,8 +107,9 @@ class PointsSystem:
         if not result:
             print(f"User {user_id} not found, creating new user")
             # اگر کاربر وجود نداشت، آن را با امتیاز پیش‌فرض ایجاد کن
+            current_time = datetime.now()
             c.execute('INSERT INTO users (user_id, points, last_reset_date) VALUES (?, 100, ?)',
-                     (user_id, datetime.now().strftime('%Y-%m-%d')))
+                     (user_id, current_time.strftime('%Y-%m-%d %H:%M:%S')))
             conn.commit()
             current_points = 100
         else:
@@ -113,26 +155,45 @@ class PointsSystem:
         c.execute('UPDATE users SET points = points + 50 WHERE user_id = ?', (referrer_id,))
         
         # ثبت رفرال
+        current_time = datetime.now()
         c.execute('INSERT INTO referrals (referrer_id, referred_id, date) VALUES (?, ?, ?)',
-                 (referrer_id, referred_id, datetime.now().strftime('%Y-%m-%d')))
+                 (referrer_id, referred_id, current_time.strftime('%Y-%m-%d %H:%M:%S')))
         
         conn.commit()
         conn.close()
         return True
 
     def _check_daily_reset(self, user_id):
+        """
+        بررسی و ریست امتیازات روزانه
+        این تابع هر بار که کاربر ربات را باز می‌کند بررسی می‌کند که آیا 24 ساعت از آخرین بازدید گذشته است
+        اگر بله، امتیاز کاربر به 100 تنظیم می‌شود
+        """
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         
-        c.execute('SELECT last_reset_date FROM users WHERE user_id = ?', (user_id,))
+        c.execute('SELECT last_reset_date, points FROM users WHERE user_id = ?', (user_id,))
         result = c.fetchone()
         
-        today = datetime.now().strftime('%Y-%m-%d')
+        current_time = datetime.now()
         
-        if not result or result[0] != today:
-            c.execute('''INSERT OR REPLACE INTO users (user_id, points, last_reset_date)
-                        VALUES (?, 100, ?)''', (user_id, today))
+        if not result:
+            # اگر کاربر وجود ندارد، آن را با امتیاز پیش‌فرض ایجاد کن
+            c.execute('''INSERT INTO users (user_id, points, last_reset_date)
+                        VALUES (?, 100, ?)''', (user_id, current_time.strftime('%Y-%m-%d %H:%M:%S')))
             conn.commit()
+            print(f"User {user_id} created with 100 points at {current_time}")
+        else:
+            # بررسی آیا 24 ساعت از آخرین ریست گذشته است
+            last_reset = datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S' if ' ' in result[0] else '%Y-%m-%d')
+            current_points = result[1]
+            
+            if current_time - last_reset >= timedelta(hours=24):
+                # بیش از 24 ساعت گذشته است، امتیازات را ریست کن
+                c.execute('''UPDATE users SET points = 100, last_reset_date = ? 
+                           WHERE user_id = ?''', (current_time.strftime('%Y-%m-%d %H:%M:%S'), user_id))
+                conn.commit()
+                print(f"User {user_id} points reset to 100 at {current_time} (previous: {current_points})")
         
         conn.close()
 
