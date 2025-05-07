@@ -174,14 +174,29 @@ class PointsSystem:
         # امتیاز پایه برای دعوت
         base_points = 50
         
-        # محاسبه امتیاز بر اساس تعداد دعوت‌های قبلی
+        # محاسبه امتیاز بر اساس تعداد دعوت‌های قبلی - سیستم پاداش پلکانی 10 مرحله‌ای
         bonus_points = 0
-        if referral_count >= 10:
-            bonus_points = 50  # بونوس اضافی برای بیش از 10 دعوت
-        elif referral_count >= 5:
-            bonus_points = 25  # بونوس اضافی برای بیش از 5 دعوت
-        elif referral_count >= 3:
-            bonus_points = 10  # بونوس اضافی برای بیش از 3 دعوت
+        
+        if referral_count >= 100:  # بیش از 100 دعوت
+            bonus_points = 950  # مجموع 1000 امتیاز
+        elif referral_count >= 80:  # بیش از 80 دعوت
+            bonus_points = 750  # مجموع 800 امتیاز
+        elif referral_count >= 60:  # بیش از 60 دعوت
+            bonus_points = 550  # مجموع 600 امتیاز
+        elif referral_count >= 50:  # بیش از 50 دعوت
+            bonus_points = 450  # مجموع 500 امتیاز
+        elif referral_count >= 40:  # بیش از 40 دعوت
+            bonus_points = 350  # مجموع 400 امتیاز
+        elif referral_count >= 30:  # بیش از 30 دعوت
+            bonus_points = 250  # مجموع 300 امتیاز
+        elif referral_count >= 20:  # بیش از 20 دعوت
+            bonus_points = 150  # مجموع 200 امتیاز
+        elif referral_count >= 15:  # بیش از 15 دعوت
+            bonus_points = 100  # مجموع 150 امتیاز
+        elif referral_count >= 10:  # بیش از 10 دعوت
+            bonus_points = 70  # مجموع 120 امتیاز
+        elif referral_count >= 5:  # بیش از 5 دعوت
+            bonus_points = 30  # مجموع 80 امتیاز
         
         total_points = base_points + bonus_points
         
@@ -328,16 +343,30 @@ class PointsSystem:
         # امتیاز کسب شده از دعوت‌ها (تخمینی)
         estimated_points = 0
         if total_referrals > 0:
-            # محاسبه امتیاز برای هر دعوت با در نظر گرفتن سیستم پاداش پلکانی
+            # محاسبه امتیاز برای هر دعوت با در نظر گرفتن سیستم پاداش پلکانی 10 مرحله‌ای
             for i in range(1, total_referrals + 1):
-                if i > 10:
-                    estimated_points += 100  # 50 پایه + 50 بونوس
+                if i > 100:
+                    estimated_points += 1000  # 50 پایه + 950 بونوس
+                elif i > 80:
+                    estimated_points += 800   # 50 پایه + 750 بونوس
+                elif i > 60:
+                    estimated_points += 600   # 50 پایه + 550 بونوس
+                elif i > 50:
+                    estimated_points += 500   # 50 پایه + 450 بونوس
+                elif i > 40:
+                    estimated_points += 400   # 50 پایه + 350 بونوس
+                elif i > 30:
+                    estimated_points += 300   # 50 پایه + 250 بونوس
+                elif i > 20:
+                    estimated_points += 200   # 50 پایه + 150 بونوس
+                elif i > 15:
+                    estimated_points += 150   # 50 پایه + 100 بونوس
+                elif i > 10:
+                    estimated_points += 120   # 50 پایه + 70 بونوس
                 elif i > 5:
-                    estimated_points += 75   # 50 پایه + 25 بونوس
-                elif i > 3:
-                    estimated_points += 60   # 50 پایه + 10 بونوس
+                    estimated_points += 80    # 50 پایه + 30 بونوس
                 else:
-                    estimated_points += 50   # 50 پایه
+                    estimated_points += 50    # 50 پایه
         
         # دعوت‌های اخیر (5 مورد آخر)
         c.execute('''SELECT referred_id, date FROM referrals 
