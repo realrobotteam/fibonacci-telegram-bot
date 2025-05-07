@@ -96,7 +96,7 @@ async def main():
     async def special_tools_callback_handler(call: types.CallbackQuery):
         await handle_special_tools_callback(call, bot)
 
-    @bot.callback_query_handler(func=lambda call: call.data in ['show_points', 'show_referral', 'back_main_menu'])
+    @bot.callback_query_handler(func=lambda call: call.data in ['show_points', 'show_referral', 'back_main_menu', 'show_top_referrers', 'show_my_referrals'])
     async def points_callback_handler(call: types.CallbackQuery):
         await handle_callback(call, bot)
 

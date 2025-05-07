@@ -426,12 +426,35 @@ async def start(message: Message, bot: TeleBot) -> None:
             referrer_id = result[0]
             print(f"Found referrer: {referrer_id} for user {user_id}")
             
-            if points_system.add_referral_points(referrer_id, user_id):
+            # پاداش دریافت شده (ممکن است به دلیل سیستم پاداش پلکانی متفاوت باشد)
+            awarded_points = points_system.add_referral_points(referrer_id, user_id)
+            
+            if awarded_points:
+                if isinstance(awarded_points, bool):  # اگر نوع برگشتی boolean باشد
+                    awarded_points = 50  # مقدار پیش‌فرض
+                
+                # اطلاع‌رسانی به کاربر دعوت شده
+                welcome_msg = f"🎉 به ربات هوش مصنوعی فیبوناچی خوش آمدید!\n\n"
+                welcome_msg += f"شما با کد دعوت وارد شده‌اید و {awarded_points} امتیاز به دعوت‌کننده اضافه شد!\n\n"
+                welcome_msg += "شما نیز می‌توانید با دعوت دوستان خود، امتیاز رایگان کسب کنید."
+                
                 await bot.send_message(
                     message.chat.id,
-                    "🎉 به ربات خوش آمدید!\n"
-                    "شما با کد دعوت وارد شده‌اید و ۵۰ امتیاز به دعوت‌کننده اضافه شد!"
+                    welcome_msg
                 )
+                
+                # اطلاع‌رسانی به کاربر دعوت‌کننده
+                try:
+                    notif_msg = f"🎉 کاربر جدیدی با کد دعوت شما وارد ربات شد!\n\n"
+                    notif_msg += f"✅ {awarded_points} امتیاز به حساب شما اضافه شد.\n"
+                    notif_msg += f"💰 می‌توانید با دعوت بیشتر دوستان، امتیاز بیشتری کسب کنید."
+                    
+                    await bot.send_message(
+                        referrer_id,
+                        notif_msg
+                    )
+                except Exception as e:
+                    print(f"Error sending notification to referrer {referrer_id}: {str(e)}")
             else:
                 print(f"Failed to add referral points for referrer {referrer_id} and user {user_id}")
         else:
@@ -990,9 +1013,13 @@ async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
         points_system._check_daily_reset(user_id)
         
         try:
+            # دریافت آمار دعوت‌های کاربر
+            stats = points_system.get_user_referral_stats(user_id)
             referral_code = points_system.get_referral_code(user_id)
             
-            markup = InlineKeyboardMarkup()
+            markup = InlineKeyboardMarkup(row_width=1)
+            markup.add(InlineKeyboardButton("📊 رتبه‌بندی دعوت‌کنندگان برتر", callback_data="show_top_referrers"))
+            markup.add(InlineKeyboardButton("🔄 لیست دعوت‌های اخیر من", callback_data="show_my_referrals"))
             markup.add(InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="back_main_menu"))
             
             # ساخت لینک دعوت
@@ -1001,7 +1028,18 @@ async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
             
             text = "🎯 لینک دعوت شما:\n\n"
             text += f"`{invite_link}`\n\n"
-            text += "با هر دعوت موفق، ۵۰ امتیاز دریافت می‌کنید!\n"
+            
+            # نمایش آمار دعوت
+            text += f"📊 تعداد کل دعوت‌های موفق شما: {stats['total']}\n"
+            text += f"💰 امتیاز کسب شده از دعوت‌ها: {stats['estimated_points']}\n\n"
+            
+            # توضیح سیستم پاداش پلکانی
+            text += "💎 سیستم پاداش پلکانی:\n"
+            text += "• هر دعوت: 50 امتیاز پایه\n"
+            text += "• بیش از 3 دعوت: 60 امتیاز (10 امتیاز بونوس)\n"
+            text += "• بیش از 5 دعوت: 75 امتیاز (25 امتیاز بونوس)\n"
+            text += "• بیش از 10 دعوت: 100 امتیاز (50 امتیاز بونوس)\n\n"
+            
             text += "برای دعوت دوستان، لینک بالا را به آنها بدهید."
             
             await bot.send_message(
@@ -1040,3 +1078,94 @@ async def handle_callback(call: types.CallbackQuery, bot: TeleBot) -> None:
             "🤖 لطفاً یکی از دستیارهای هوشمند را انتخاب کنید:",
             reply_markup=get_assistants_markup()
         )
+    elif call.data == "show_top_referrers":
+        await bot.answer_callback_query(call.id)
+        
+        user_id = call.from_user.id
+        chat_id = call.message.chat.id
+        
+        try:
+            # دریافت لیست کاربران برتر
+            top_referrers = points_system.get_top_referrers(10)
+            
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("🔙 بازگشت به منوی دعوت", callback_data="show_referral"))
+            
+            text = "🏆 رتبه‌بندی کاربران برتر از نظر دعوت دوستان:\n\n"
+            
+            if not top_referrers:
+                text += "هنوز هیچ کاربری دعوت موفقی نداشته است!\n"
+                text += "اولین نفری باشید که دوستان خود را دعوت می‌کند و در صدر این جدول قرار می‌گیرید!"
+            else:
+                for i, (referrer_id, count) in enumerate(top_referrers):
+                    # ستاره برای کاربر فعلی
+                    star = "⭐️ " if referrer_id == user_id else ""
+                    # مشخص کردن رتبه اول تا سوم با مدال
+                    medal = ""
+                    if i == 0:
+                        medal = "🥇 "
+                    elif i == 1:
+                        medal = "🥈 "
+                    elif i == 2:
+                        medal = "🥉 "
+                    else:
+                        medal = f"{i+1}. "
+                    
+                    text += f"{medal}{star}کاربر {referrer_id}: {count} دعوت موفق\n"
+            
+            await bot.send_message(
+                chat_id,
+                text,
+                reply_markup=markup
+            )
+        
+        except Exception as e:
+            print(f"Error in show_top_referrers for user {user_id}: {str(e)}")
+            await bot.send_message(
+                chat_id,
+                "⚠️ خطایی در نمایش رتبه‌بندی رخ داد. لطفاً دوباره تلاش کنید.",
+                reply_markup=get_support_markup()
+            )
+            
+    elif call.data == "show_my_referrals":
+        await bot.answer_callback_query(call.id)
+        
+        user_id = call.from_user.id
+        chat_id = call.message.chat.id
+        
+        try:
+            # دریافت آمار دعوت‌های کاربر
+            stats = points_system.get_user_referral_stats(user_id)
+            
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("🔙 بازگشت به منوی دعوت", callback_data="show_referral"))
+            
+            text = "🔄 لیست دعوت‌های اخیر شما:\n\n"
+            
+            if not stats['recent']:
+                text += "شما هنوز هیچ دعوت موفقی نداشته‌اید!\n"
+                text += "دوستان خود را دعوت کنید تا امتیاز بیشتری کسب کنید."
+            else:
+                for i, (referred_id, date_str) in enumerate(stats['recent']):
+                    # تبدیل تاریخ به فرمت خوانا
+                    try:
+                        date_obj = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                        date_formatted = date_obj.strftime('%Y/%m/%d %H:%M')
+                    except:
+                        date_formatted = date_str
+                    
+                    text += f"{i+1}. کاربر {referred_id} - تاریخ: {date_formatted}\n"
+            
+            await bot.send_message(
+                chat_id,
+                text,
+                reply_markup=markup
+            )
+        
+        except Exception as e:
+            print(f"Error in show_my_referrals for user {user_id}: {str(e)}")
+            await bot.send_message(
+                chat_id,
+                "⚠️ خطایی در نمایش دعوت‌های شما رخ داد. لطفاً دوباره تلاش کنید.",
+                reply_markup=get_support_markup()
+            )

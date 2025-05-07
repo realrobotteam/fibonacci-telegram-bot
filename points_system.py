@@ -167,18 +167,36 @@ class PointsSystem:
             conn.close()
             return False
         
+        # محاسبه تعداد کل دعوت‌های موفق کاربر برای پاداش پلکانی
+        c.execute('SELECT COUNT(*) FROM referrals WHERE referrer_id = ?', (referrer_id,))
+        referral_count = c.fetchone()[0]
+        
+        # امتیاز پایه برای دعوت
+        base_points = 50
+        
+        # محاسبه امتیاز بر اساس تعداد دعوت‌های قبلی
+        bonus_points = 0
+        if referral_count >= 10:
+            bonus_points = 50  # بونوس اضافی برای بیش از 10 دعوت
+        elif referral_count >= 5:
+            bonus_points = 25  # بونوس اضافی برای بیش از 5 دعوت
+        elif referral_count >= 3:
+            bonus_points = 10  # بونوس اضافی برای بیش از 3 دعوت
+        
+        total_points = base_points + bonus_points
+        
         # اضافه کردن امتیاز به دعوت‌کننده
-        c.execute('UPDATE users SET points = points + 50 WHERE user_id = ?', (referrer_id,))
+        c.execute('UPDATE users SET points = points + ? WHERE user_id = ?', (total_points, referrer_id,))
         
         # ثبت رفرال
         current_time = datetime.now()
         c.execute('INSERT INTO referrals (referrer_id, referred_id, date) VALUES (?, ?, ?)',
                  (referrer_id, referred_id, current_time.strftime('%Y-%m-%d %H:%M:%S')))
         
-        print(f"User {referrer_id} successfully referred user {referred_id} and got 50 points")
+        print(f"User {referrer_id} successfully referred user {referred_id} and got {total_points} points (base: {base_points}, bonus: {bonus_points})")
         conn.commit()
         conn.close()
-        return True
+        return total_points
 
     def _check_daily_reset(self, user_id):
         """
@@ -294,4 +312,61 @@ class PointsSystem:
             print(f"User {user_id} does not exist in database")
         
         conn.close()
-        return result 
+        return result
+
+    def get_user_referral_stats(self, user_id):
+        """
+        دریافت آمار دعوت‌های کاربر
+        """
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        # تعداد کل دعوت‌های موفق
+        c.execute('SELECT COUNT(*) FROM referrals WHERE referrer_id = ?', (user_id,))
+        total_referrals = c.fetchone()[0]
+        
+        # امتیاز کسب شده از دعوت‌ها (تخمینی)
+        estimated_points = 0
+        if total_referrals > 0:
+            # محاسبه امتیاز برای هر دعوت با در نظر گرفتن سیستم پاداش پلکانی
+            for i in range(1, total_referrals + 1):
+                if i > 10:
+                    estimated_points += 100  # 50 پایه + 50 بونوس
+                elif i > 5:
+                    estimated_points += 75   # 50 پایه + 25 بونوس
+                elif i > 3:
+                    estimated_points += 60   # 50 پایه + 10 بونوس
+                else:
+                    estimated_points += 50   # 50 پایه
+        
+        # دعوت‌های اخیر (5 مورد آخر)
+        c.execute('''SELECT referred_id, date FROM referrals 
+                   WHERE referrer_id = ? 
+                   ORDER BY date DESC LIMIT 5''', (user_id,))
+        recent_referrals = c.fetchall()
+        
+        conn.close()
+        
+        return {
+            'total': total_referrals,
+            'estimated_points': estimated_points,
+            'recent': recent_referrals
+        }
+        
+    def get_top_referrers(self, limit=10):
+        """
+        دریافت لیست کاربران برتر از نظر تعداد دعوت
+        """
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        
+        c.execute('''SELECT referrer_id, COUNT(*) as count 
+                   FROM referrals 
+                   GROUP BY referrer_id 
+                   ORDER BY count DESC 
+                   LIMIT ?''', (limit,))
+        
+        top_referrers = c.fetchall()
+        conn.close()
+        
+        return top_referrers 
